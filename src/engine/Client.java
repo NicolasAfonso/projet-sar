@@ -2,6 +2,7 @@ package engine;
 
 public class Client {
 	
+	private int id;
 	private BufferIn buffin;
 	private BufferOut buffout;
 	
@@ -36,5 +37,19 @@ public class Client {
 	 */
 	public void setBuffout(BufferOut buffout) {
 		this.buffout = buffout;
+	}
+
+	/**
+	 * @return the id
+	 */
+	public int getId() {
+		return id;
+	}
+
+	/**
+	 * @param id the id to set
+	 */
+	public void setId(int id) {
+		this.id = id;
 	}
 }
