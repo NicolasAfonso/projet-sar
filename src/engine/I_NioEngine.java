@@ -3,6 +3,9 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.channels.SocketChannel;
 
+import server.I_ServerHandler;
+import client.I_ClientHandler;
+
 public interface I_NioEngine {
 	
 	/**
@@ -12,7 +15,7 @@ public interface I_NioEngine {
 	 * @param handler
 	 * @throws IOException
 	 */
-	public void initializeAsServer(InetAddress hostAddress,int port, I_RecvMsgHandler handler) throws IOException;
+	public void initializeAsServer(InetAddress hostAddress,int port, I_ServerHandler handler) throws IOException;
 	
 	/**
 	 * Initialize the engine with the client configuration
@@ -21,7 +24,7 @@ public interface I_NioEngine {
 	 * @param handler
 	 * @throws IOException
 	 */
-	public void initializeAsClient(InetAddress hostAddress,int port, I_RecvMsgHandler handler) throws IOException;
+	public void initializeAsClient(InetAddress hostAddress,int port, I_ClientHandler handler) throws IOException;
 	
 	/**
 	 * Nio Key selector

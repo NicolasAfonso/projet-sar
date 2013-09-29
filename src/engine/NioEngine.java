@@ -14,6 +14,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import server.I_ServerHandler;
+import client.I_ClientHandler;
+
 
 
 public class NioEngine implements I_NioEngine{
@@ -22,7 +25,8 @@ public class NioEngine implements I_NioEngine{
 	private InetAddress address ;
 	private int port ;
 	private Selector selector ;
-	private I_RecvMsgHandler handler;
+	private I_ClientHandler handlerClient;
+	private I_ServerHandler handlerServer;
 	private Map<SocketChannel, Client> clients = new HashMap<>();
 
 	//Server info
@@ -38,12 +42,12 @@ public class NioEngine implements I_NioEngine{
 	 * @param I_RecvMsgHandler handler
 	 */
 	@Override
-	public void initializeAsServer(InetAddress hostAddress, int port,I_RecvMsgHandler handler){
+	public void initializeAsServer(InetAddress hostAddress, int port,I_ServerHandler handler){
 		try{
 			this.address = hostAddress ;
 			this.port = port ;
 			this.selector = SelectorProvider.provider().openSelector();
-			this.handler = handler; 
+			this.handlerServer = handler; 
 			
 			// Server Socket Channel creation (not blocking) 
 			serverChannel = ServerSocketChannel.open();
@@ -58,13 +62,13 @@ public class NioEngine implements I_NioEngine{
 			System.err.println("Initialize server error " + e.toString());
 		}
 	}
-
+	
 	@Override
-	public void initializeAsClient(InetAddress hostAddress, int port,I_RecvMsgHandler handler){
+	public void initializeAsClient(InetAddress hostAddress, int port,I_ClientHandler handler){
 		try{
 			this.address = hostAddress ;
 			this.port = port ;
-			this.handler = handler; 
+			this.handlerClient = handler; 
 
 			// Client Socket Channel creation (not blocking) 
 			socketChannel_Client = SocketChannel.open();
@@ -169,7 +173,7 @@ public class NioEngine implements I_NioEngine{
 		SocketChannel socketChannel = (SocketChannel) key.channel();
 		BufferIn in ;
 		in = clients.get(socketChannel).getBuffin();
-
+		TYPE_MSG type = null;
 		int numRead;
 		try{
 
@@ -181,7 +185,7 @@ public class NioEngine implements I_NioEngine{
 				{
 					key.cancel();
 					socketChannel.close();
-					System.out.println("SIZE numRead = -1 , delete key and close channel");
+					System.out.println("S				TYPE_MSG type = null;IZE numRead = -1 , delete key and close channel");
 					return;
 				}
 
@@ -206,25 +210,9 @@ public class NioEngine implements I_NioEngine{
 					return;
 				}
 				if(in.buffin.remaining()==0){
-					TYPE_MSG type = TYPE_MSG.valueOf(in.buffin.getInt(0));
+					type = TYPE_MSG.valueOf(in.buffin.getInt(0));
 					in.buffin = ByteBuffer.allocate(in.message_size);
 					in.state = STATE.DATA;
-
-					switch (type)
-					{
-					case MESSAGE:
-						System.out.println( "Type MESSAGE");
-						break;  
-					case ACK:
-						System.out.println( "Type ACK");
-						break;  
-					case ERROR:
-						System.out.println( "Type ERROR");
-						break; 
-					default:
-
-					}
-
 				}
 			}
 
@@ -249,7 +237,13 @@ public class NioEngine implements I_NioEngine{
 					System.out.println("Received " + (in.buffin.capacity()+4+4) +" bytes (Message size : " + in.buffin.capacity()+")" );
 					//Le buffer est plein , on a donc reçu le message que l'on attendait, car celui-ci était de la taille du message. On peut donc executer les actions. 
 					in.state = STATE.SIZE;
-					handler.receivedCB(in.buffin.array(),socketChannel);
+					if(socketChannel_Client != null)
+					{
+						handlerClient.receivedMSG(in.buffin.array(),type);
+					}else
+					{
+						handlerServer.receivedMSG(in.buffin.array(),type,socketChannel);
+					}
 				}
 			}
 
