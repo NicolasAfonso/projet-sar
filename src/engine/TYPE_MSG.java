@@ -21,11 +21,13 @@ public enum TYPE_MSG{
 			case 4 :
 				return UNLOCK;
 			case 5 :
+				return UPLOAD;
+			case 6:
 				return DOWNLOAD;
-			case 6 : 
-				return DELETE;
 			case 7 : 
-				return ACK ;
+				return DELETE;
+			case 8 :
+				return ACK;
 			default :
 				return ERROR;
 		}

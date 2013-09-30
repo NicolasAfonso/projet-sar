@@ -50,5 +50,7 @@ public interface I_NioEngine {
 	 * Closed the connexion
 	 */
 	public void terminate();
+
+	public Client getClient(SocketChannel socketChannel);
 	
 }

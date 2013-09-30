@@ -331,4 +331,10 @@ public class NioEngine implements I_NioEngine{
 
 	}
 
+	@Override
+	public Client getClient(SocketChannel socketChannel) {
+		
+		return clients.get(socketChannel);
+	}
+
 }

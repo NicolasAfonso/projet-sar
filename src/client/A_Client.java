@@ -8,6 +8,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import document.Document;
 import document.I_Document;
 import engine.I_NioEngine;
 import engine.NioEngine;
@@ -20,30 +21,34 @@ public class A_Client implements I_ClientHandler{
 	private List<String> urls ;
 	private I_NioEngine nio ;
 	ByteBuffer tmp ;
-	
+
 	public A_Client(String[] args)
 	{
 		id = Integer.parseInt(args[0]) ;
 		nio = new NioEngine();
 		urls =  new ArrayList<String>();
 		cache = new Cache();
-		
+
 		init(args);
-		
+
 	}
-	
+
 	public void init(String[] args){
 		InetAddress addr;
 		try {
+			// Connection
 			addr = InetAddress.getByName("localhost");		
 			nio.initializeAsClient(addr,Integer.parseInt(args[1]),this);
-			tmp = ByteBuffer.allocate(13);
-			tmp.put("t".getBytes());
-			
+
+			// send client id to server
+			tmp = ByteBuffer.allocate(4);
+			tmp.putInt(id);
 			nio.send(tmp.array(), TYPE_MSG.HELLO_CLIENT);
+
+		
 			nio.mainloop();
-			
-			
+
+
 		} catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -56,7 +61,7 @@ public class A_Client implements I_ClientHandler{
 		} 
 
 	}
-	
+
 	public static void main(String[] args) {
 		try {
 			new A_Client(args);
@@ -67,10 +72,25 @@ public class A_Client implements I_ClientHandler{
 
 	@Override
 	public void receivedMSG(byte[] data, TYPE_MSG type) {
+
 		System.out.println(type);
 		
-		nio.send(data, TYPE_MSG.HELLO_CLIENT);
 		
+		// Send first document to server (don't need to use the cache)
+		Document doc = new Document("tutu",id);
+		byte[] file = new String("Je suis un fichier").getBytes();
+		doc.setFile(file);
+
+		tmp = ByteBuffer.allocate(4+4+doc.getUrl().length()+4+file.length);
+		tmp.putInt(doc.getVersionNumber());
+		tmp.putInt(doc.getUrl().length());
+		tmp.put(doc.getUrl().getBytes());
+		tmp.putInt(file.length);
+		tmp.put(doc.getFile());
+		System.out.println("Message : " +  new String(tmp.array()));
+		nio.send(tmp.array(),TYPE_MSG.UPLOAD);
+		//nio.send(data, TYPE_MSG.HELLO_CLIENT);
+
 	}
-	
+
 }

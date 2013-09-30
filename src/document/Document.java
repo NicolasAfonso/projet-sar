@@ -11,12 +11,13 @@ public class Document implements I_Document,Serializable {
 	 */
 	private static final long serialVersionUID = 1L;
 	private String url ;
-	private Client owner; 
-	private long versionNumber ;
+	private int owner; 
+	private int versionNumber ;
 	private I_Document currentVersion;
 	private I_Document savedVersion ;
+	private byte[] file;
 	
-	public Document(String u,Client o){
+	public Document(String u,int o){
 		
 		url = u ; 
 		owner = o;
@@ -41,26 +42,26 @@ public class Document implements I_Document,Serializable {
 	/**
 	 * @return the owner
 	 */
-	public Client getOwner() {
+	public int getOwner() {
 		return owner;
 	}
 	/**
 	 * @param owner the owner to set
 	 */
-	public void setOwner(Client owner) {
+	public void setOwner(int owner) {
 		this.owner = owner;
 	}
 
 	/**
 	 * @return the versionNumber
 	 */
-	public long getVersionNumber() {
+	public int getVersionNumber() {
 		return versionNumber;
 	}
 	/**
 	 * @param versionNumber the versionNumber to set
 	 */
-	public void setVersionNumber(long versionNumber) {
+	public void setVersionNumber(int versionNumber) {
 		this.versionNumber = versionNumber;
 	}
 	/**
@@ -94,6 +95,21 @@ public class Document implements I_Document,Serializable {
 		return serialVersionUID;
 	}
 
-	
+	/**
+	 * @return the file
+	 */
+	public byte[] getFile() {
+		return file;
+	}
+
+	/**
+	 * @param file the file to set
+	 */
+	public void setFile(byte[] file) {
+		this.file = file;
+	}
+
+
+
 	
 }
