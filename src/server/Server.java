@@ -82,7 +82,12 @@ public class Server implements I_ServerHandler{
 
 
 	}
-
+	
+	/**
+     * Callback used when a client delete a document
+     * @param data
+     * @param socketChannel
+     */
 	private void receivedDeleteFile(byte[] data, SocketChannel socketChannel) {
 
 		tmp = ByteBuffer.allocate(data.length);
@@ -101,7 +106,12 @@ public class Server implements I_ServerHandler{
 		}
 
 	}
-
+	
+    /**
+     * Callback used when a client download a document
+     * @param data
+     * @param socketChannel
+     */
 	private void receivedDownloadClient(byte[] data, SocketChannel socketChannel) {
 		tmp = ByteBuffer.allocate(data.length);
 		tmp.put(data);
@@ -112,26 +122,32 @@ public class Server implements I_ServerHandler{
 		tmp.get(urlb, 0, urlSize);
 		String url = new String(urlb);
 		I_Document doc = documents.get(url);
+		
+		//METHOD WITH ObjectOutputStream -> Branch ObjectOutputStream on GIT. Search another solution 
 		if(doc != null)
 		{
-			ByteArrayOutputStream bos = new ByteArrayOutputStream();
-			ObjectOutput out = null;
-			try {
-				out = new ObjectOutputStream(bos);
-				out.writeObject(doc);
-				byte[] yourBytes = bos.toByteArray();
-				nio.send(socketChannel,yourBytes,TYPE_MSG.ACK_DOWNLOAD);
-				out.close();
-				bos.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}   
+//			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+//			ObjectOutput out = null;
+//			try {
+//				out = new ObjectOutputStream(bos);
+//				out.writeObject(doc);
+//				byte[] yourBytes = bos.toByteArray();
+//				nio.send(socketChannel,yourBytes,TYPE_MSG.ACK_DOWNLOAD);
+//				out.close();
+//				bos.close();
+//			} catch (IOException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}   
 
 		}
 	}
 
-
+	/**
+     * Callback used when a client upload a document
+     * @param data
+     * @param socketChannel
+     */
 	private void receivedUploadClient(byte[] data, SocketChannel socketChannel) {
 		tmp = ByteBuffer.allocate(data.length);
 		tmp.put(data);
@@ -178,7 +194,12 @@ public class Server implements I_ServerHandler{
 
 
 	}
-
+	
+	/**
+     * Callback used when a new client is connected on the server content
+     * @param data
+     * @param socketChannel
+     */
 	private void receivedHelloClient(byte[] data, SocketChannel socketChannel) {
 		Client c = nio.getClient(socketChannel);
 		tmp = ByteBuffer.allocate(4);

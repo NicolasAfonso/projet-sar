@@ -80,7 +80,6 @@ public class A_Client implements I_ClientHandler,Runnable{
 
 	@Override
 	public void receivedMSG(byte[] data, TYPE_MSG type) {
-
 		switch (type)
 		{
 		case ERROR :
@@ -104,27 +103,11 @@ public class A_Client implements I_ClientHandler,Runnable{
 
 		}
 	}
-
-	private void receivedDeleteFile(byte[] data) {
-		System.out.println("FILE HAS BEEN DELETED !");
-		tmp = ByteBuffer.allocate(data.length);
-		tmp.put(data);
-		tmp.rewind();
-		int versionClient = tmp.getInt(0);
-		int urlSize = tmp.getInt(4);
-
-		byte[] urlb = new byte[urlSize];
-		tmp.position(8);
-		tmp.get(urlb, 0, urlSize);
-
-		String url = new String(urlb);
-		System.out.println("File Name: "+ url);
-
-		urls.remove(url);
-		System.out.println("Nombre de documents disponibles : " +urls.size());
-
-	}
-
+	
+	/**
+     * Callback used when the server respond to a Hello_Client Notification
+     * @param data
+     */
 	private void receivedACKHelloClient(byte[] data) {
 
 		// Send first document to server (don't need to use the cache)
@@ -144,23 +127,30 @@ public class A_Client implements I_ClientHandler,Runnable{
 		System.out.println("Message : " +  new String(tmp.array()));
 
 		nio.send(tmp.array(),TYPE_MSG.UPLOAD);
-
+	}
+	
+	/**
+     * Callback used when the server boot
+     * @param data
+     */
+	private void receivedHelloServer(byte[] data) {
+		// TODO Auto-generated method stub
 
 	}
-
+	
+	/**
+     * Callback used when the server send a new document information
+     * @param data
+     */
 	private void receivedPushNewFile(byte[] data) {
 		System.out.println("NEW FILE HAS BEEN PUSHED !");
 		tmp = ByteBuffer.allocate(data.length);
 		tmp.put(data);
 		tmp.rewind();
 		int versionClient = tmp.getInt(0);
-
 		System.out.println("VERSION CLIENT: "+ versionClient);
-
 		int urlSize = tmp.getInt(4);
 		System.out.println("TAILLE URL: "+ urlSize);
-
-
 		byte[] urlb = new byte[urlSize];
 		tmp.position(8);
 		tmp.get(urlb, 0, urlSize);
@@ -177,34 +167,62 @@ public class A_Client implements I_ClientHandler,Runnable{
 		nio.send(docTab.array(),TYPE_MSG.DOWNLOAD);
 
 	}
-
+	
+	/**
+     * Callback used when the server respond to a Download Notification
+     * @param data
+     */
 	private void receivedDownloadServer(byte[] data) {
-		ByteArrayInputStream bis = new ByteArrayInputStream(data);
-		ObjectInput in = null;
+		//METHOD WITH ObjectInputStream -> Branch ObjectOutputStream on GIT. Search another solution 
+//		ByteArrayInputStream bis = new ByteArrayInputStream(data);
+//		ObjectInput in = null;
+//
+//		try {
+//			in = new ObjectInputStream(bis);
+//			I_Document o = (I_Document) in.readObject(); 
+//			System.out.println("Test Download : "+ o.getOwner() +"-"+o.getUrl()+"-"+o.getVersionNumber() );
+//			bis.close();
+//			in.close();
+//
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		} catch (ClassNotFoundException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 
-		try {
-			in = new ObjectInputStream(bis);
-			I_Document o = (I_Document) in.readObject(); 
-			System.out.println("Test Download : "+ o.getOwner() +"-"+o.getUrl()+"-"+o.getVersionNumber() );
-			bis.close();
-			in.close();
-
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-
-	}
-
-	private void receivedHelloServer(byte[] data) {
-		// TODO Auto-generated method stub
 
 	}
+	
+	 /**
+     * Callback used when the server send a Delete Notification
+     * @param data
+     */
+	private void receivedDeleteFile(byte[] data) {
+		System.out.println("FILE HAS BEEN DELETED !");
+		tmp = ByteBuffer.allocate(data.length);
+		tmp.put(data);
+		tmp.rewind();
+		int versionClient = tmp.getInt(0);
+		int urlSize = tmp.getInt(4);
 
+		byte[] urlb = new byte[urlSize];
+		tmp.position(8);
+		tmp.get(urlb, 0, urlSize);
+
+		String url = new String(urlb);
+		System.out.println("File Name: "+ url);
+
+		urls.remove(url);
+		System.out.println("Nombre de documents disponibles : " +urls.size());
+
+	}
+	
+	  /**
+     * Not used 
+     * @param urlD
+     */
 	public void deleteFile(String urlD)
 	{
 		ByteBuffer docTab = ByteBuffer.allocate(urlD.length() + 4);
