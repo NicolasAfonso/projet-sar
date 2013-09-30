@@ -13,9 +13,11 @@ import java.nio.channels.spi.SelectorProvider;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 import server.I_ServerHandler;
 import client.I_ClientHandler;
+import document.I_Document;
 
 
 
@@ -335,6 +337,28 @@ public class NioEngine implements I_NioEngine{
 	public Client getClient(SocketChannel socketChannel) {
 		
 		return clients.get(socketChannel);
+	}
+	
+	public void pushDocument (I_Document doc, String request){
+		
+		String url = doc.getUrl();
+		int version = doc.getVersionNumber();
+		//String msg = version + url.length() + url ;
+		
+		//byte[] docTab =  new byte[url.length()+8];
+		
+		 //byte[] docTab = new byte(msg);
+		ByteBuffer docTab = ByteBuffer.allocate(url.length() + 8);
+		docTab.putInt(version);
+		docTab.putInt(url.length());
+		docTab.put(url.getBytes());
+		
+		Set<SocketChannel> keys = clients.keySet();
+		Iterator it = keys.iterator();
+		while (it.hasNext()){
+			
+			send((SocketChannel) it.next(), docTab.array(), TYPE_MSG.PUSH_NEW_FILE);
+		}
 	}
 
 }

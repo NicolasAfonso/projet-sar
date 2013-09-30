@@ -78,29 +78,50 @@ public class Server implements I_ServerHandler{
 		//Read version
 		tmp = ByteBuffer.allocate(data.length);
 		tmp.put(data);
+		
 		//tmp.put(data, 0, 3);
 		tmp.rewind();
 		//tmp.put(dataBB) ;
-		int versionClient = tmp.getInt(0);
-		int urlSize = tmp.getInt(4);
-		byte[] urlb = new byte[urlSize];
-		tmp.get(urlb,8,urlSize);
 		
+		
+		int versionClient = tmp.getInt(0);
+		
+		System.out.println("VERSION CLIENT: "+ versionClient);
+		
+		
+		int urlSize = tmp.getInt(4);
+		System.out.println("TAILLE URL: "+ urlSize);
+		
+		
+		byte[] urlb = new byte[urlSize];//ok
+		//tmp.get(urlb,7,5);
+		tmp.position(8);
+		tmp.get(urlb, 0, urlSize);
+		
+		System.out.println("TABLEAU URL: "+ new String(urlb));
 		
 		String url = new String(urlb);
-		int fileSize = tmp.getInt(urlSize);
+		int fileSize = tmp.getInt(8+urlSize);
+		System.out.println("TAILLE FILE: "+ fileSize);
+		
 		byte[] fileb = new byte[fileSize];
-		String file = new String(tmp.get(fileb,urlSize,fileSize).array());
-		System.out.println("PLOP");
-		System.out.println("URL RECUP " + url + " doc" + new String(file)+ " version " + versionClient);
+		tmp.position(8+urlSize+4);
+		tmp.get(fileb, 0, fileSize);
+		System.out.println("TABLEAU FILE: "+ new String(fileb));
 		
+		//String file = new String(tmp.get(fileb,urlSize,fileSize).array());
+		//System.out.println("PLOP");
+		//System.out.println("URL RECUP " + url + " doc" + new String(file)+ " version " + versionClient);
 		
-		I_Document doc = documents.get(url);
-		if(doc.equals(null))
+		//String url = null;
+		I_Document doc = documents.get(url); // on suppose que c'est juste un objet pour l'instant
+		if(doc == null)
 		{
 			doc = new Document(url, nio.getClient(socketChannel).getId()) ;
 			documents.put(url,doc);
 			docsClient.put(nio.getClient(socketChannel).getId(), doc);
+			
+			nio.pushDocument(doc, "New Doc");
 		}
 		else
 		{
@@ -123,4 +144,5 @@ public class Server implements I_ServerHandler{
 		c.setId(i);
 		nio.send(socketChannel, data, TYPE_MSG.ACK);
 	}
+	
 }

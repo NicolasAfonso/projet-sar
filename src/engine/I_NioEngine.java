@@ -5,6 +5,7 @@ import java.nio.channels.SocketChannel;
 
 import server.I_ServerHandler;
 import client.I_ClientHandler;
+import document.I_Document;
 
 public interface I_NioEngine {
 	
@@ -52,5 +53,7 @@ public interface I_NioEngine {
 	public void terminate();
 
 	public Client getClient(SocketChannel socketChannel);
+	
+	public void pushDocument (I_Document doc, String request);
 	
 }

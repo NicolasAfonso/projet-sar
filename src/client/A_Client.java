@@ -45,7 +45,7 @@ public class A_Client implements I_ClientHandler{
 			tmp.putInt(id);
 			nio.send(tmp.array(), TYPE_MSG.HELLO_CLIENT);
 
-		
+
 			nio.mainloop();
 
 
@@ -72,25 +72,36 @@ public class A_Client implements I_ClientHandler{
 
 	@Override
 	public void receivedMSG(byte[] data, TYPE_MSG type) {
-
-		System.out.println(type);
 		
+		if (type == TYPE_MSG.PUSH_NEW_FILE){
+			System.out.println("NEW FILE HAS BEEN PUSHED !");
 		
-		// Send first document to server (don't need to use the cache)
-		Document doc = new Document("tutu",id);
-		byte[] file = new String("Je suis un fichier").getBytes();
-		doc.setFile(file);
+		nio.send(new String("Ack").getBytes(),TYPE_MSG.ACK);}
+		else {
 
-		tmp = ByteBuffer.allocate(4+4+doc.getUrl().length()+4+file.length);
-		tmp.putInt(doc.getVersionNumber());
-		tmp.putInt(doc.getUrl().length());
-		tmp.put(doc.getUrl().getBytes());
-		tmp.putInt(file.length);
-		tmp.put(doc.getFile());
-		System.out.println("Message : " +  new String(tmp.array()));
-		nio.send(tmp.array(),TYPE_MSG.UPLOAD);
-		//nio.send(data, TYPE_MSG.HELLO_CLIENT);
+			System.out.println(type);
 
+
+			// Send first document to server (don't need to use the cache)
+			Document doc = new Document("tutus",id);
+			byte[] file = new String("Je suis un fichier").getBytes();
+			doc.setFile(file);
+
+			tmp = ByteBuffer.allocate(4+4+doc.getUrl().length()+4+file.length);
+			//tmp.putInt(doc.getVersionNumber());
+			tmp.putInt(9);
+
+			tmp.putInt(doc.getUrl().length());
+				
+
+
+			tmp.put(doc.getUrl().getBytes());
+			tmp.putInt(file.length);
+			tmp.put(doc.getFile());
+			System.out.println("Message : " +  new String(tmp.array()));
+			nio.send(tmp.array(),TYPE_MSG.UPLOAD);
+			//nio.send(data, TYPE_MSG.HELLO_CLIENT);
+		}
 	}
 
 }
