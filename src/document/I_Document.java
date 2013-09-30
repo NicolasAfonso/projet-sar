@@ -1,8 +1,10 @@
 package document;
 
+import java.io.Serializable;
+
 import engine.Client;
 
-public interface I_Document {
+public interface I_Document extends Serializable{
 	
 	public String getUrl();
 	public void setUrl(String url);

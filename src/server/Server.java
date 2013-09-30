@@ -1,5 +1,12 @@
 package server;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
@@ -32,7 +39,7 @@ public class Server implements I_ServerHandler{
 			int port = Integer.parseInt(args[0]);
 			nio.initializeAsServer(addr, port, this);
 			nio.mainloop();
-			
+
 		} catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -49,91 +56,110 @@ public class Server implements I_ServerHandler{
 			e.printStackTrace();
 		}
 	}
-	
+
 	@Override
 	public void receivedMSG(byte[] data, TYPE_MSG type, SocketChannel socketChannel) {
-		
 		switch (type)
 		{
-			case ERROR :
-				break;
-			case HELLO_CLIENT : 
-				receivedHelloClient(data,socketChannel);
-				break;
-			case UPLOAD :
-				receivedUploadClient(data,socketChannel);
-				break;
-			default :
-				
-		}
-		
-		System.out.println(new String(data));
-		//nio.send(socketChannel,data, TYPE_MSG.HELLO_SERVER);
-		
-		
-	}
+		case ERROR :
+			break;
+		case HELLO_CLIENT : 
+			receivedHelloClient(data,socketChannel);
+			break;
+		case UPLOAD :
+			receivedUploadClient(data,socketChannel);
+			break;
+		case DOWNLOAD : 
+			receivedDownloadClient(data,socketChannel);
+			break;
+		case DELETE : 
+			receivedDeleteFile(data,socketChannel);
+			break;
+		default :
 
-	private void receivedUploadClient(byte[] data, SocketChannel socketChannel) {
-		//ByteBuffer dataBB = ByteBuffer.allocate(data.length);
-		//Read version
+		}
+
+	}
+	
+	/**
+	 * Callback used when a client delete a document
+	 * @param data
+	 * @param socketChannel
+	 */
+	private void receivedDeleteFile(byte[] data, SocketChannel socketChannel) {
+
 		tmp = ByteBuffer.allocate(data.length);
 		tmp.put(data);
-		
-		//tmp.put(data, 0, 3);
 		tmp.rewind();
-		//tmp.put(dataBB) ;
-		
-		
-		int versionClient = tmp.getInt(0);
-		
-		System.out.println("VERSION CLIENT: "+ versionClient);
-		
-		
-		int urlSize = tmp.getInt(4);
-		System.out.println("TAILLE URL: "+ urlSize);
-		
-		
-		byte[] urlb = new byte[urlSize];//ok
-		//tmp.get(urlb,7,5);
-		tmp.position(8);
+		int urlSize= tmp.getInt(0);
+		byte[] urlb = new byte[urlSize];
+		tmp.position(4);
 		tmp.get(urlb, 0, urlSize);
-		
-		System.out.println("TABLEAU URL: "+ new String(urlb));
-		
 		String url = new String(urlb);
-		int fileSize = tmp.getInt(8+urlSize);
-		System.out.println("TAILLE FILE: "+ fileSize);
-		
-		byte[] fileb = new byte[fileSize];
-		tmp.position(8+urlSize+4);
-		tmp.get(fileb, 0, fileSize);
-		System.out.println("TABLEAU FILE: "+ new String(fileb));
-		
-		//String file = new String(tmp.get(fileb,urlSize,fileSize).array());
-		//System.out.println("PLOP");
-		//System.out.println("URL RECUP " + url + " doc" + new String(file)+ " version " + versionClient);
-		
-		//String url = null;
-		I_Document doc = documents.get(url); // on suppose que c'est juste un objet pour l'instant
-		if(doc == null)
+		I_Document doc = documents.get(url);
+		if(doc != null)
 		{
-			doc = new Document(url, nio.getClient(socketChannel).getId()) ;
-			documents.put(url,doc);
-			docsClient.put(nio.getClient(socketChannel).getId(), doc);
-			
-			nio.pushDocument(doc, "New Doc");
+			documents.remove(url);
+			nio.push(doc,TYPE_MSG.DELETE);
+		}
+
+	}
+
+	/**
+	 * Callback used when a client download a document
+	 * @param data
+	 * @param socketChannel
+	 */
+	private void receivedDownloadClient(byte[] data, SocketChannel socketChannel) {
+		tmp = ByteBuffer.allocate(data.length);
+		tmp.put(data);
+		tmp.rewind();
+		int urlSize= tmp.getInt(0);
+		byte[] urlb = new byte[urlSize];
+		tmp.position(4);
+		tmp.get(urlb, 0, urlSize);
+		String url = new String(urlb);
+		I_Document doc = documents.get(url);
+		if(doc != null)
+		{
+			byte[] docD = I_DocumentToByte(doc);
+			nio.send(socketChannel,docD,TYPE_MSG.ACK_DOWNLOAD);
 		}
 		else
 		{
-			if(doc.getVersionNumber() < versionClient)
-			{
-				//doc.setFile(file);
-			}
+			nio.send(socketChannel,"ERROR".getBytes(),TYPE_MSG.ERROR);
 		}
-		
-		
 	}
 
+	/**
+	 * Callback used when a client upload a document
+	 * @param data
+	 * @param socketChannel
+	 */
+	private void receivedUploadClient(byte[] data, SocketChannel socketChannel) {	
+		I_Document docReceived = bytesToI_Document(data);
+		System.out.println("Received : "+ docReceived.getOwner() +"-"+docReceived.getUrl()+"-"+docReceived.getVersionNumber() );
+		I_Document doc = documents.get(docReceived.getUrl()); // on suppose que c'est juste un objet pour l'instant
+		if(doc == null)
+		{
+			documents.put(docReceived.getUrl(),docReceived);
+			docsClient.put(nio.getClient(socketChannel).getId(), docReceived);
+			nio.push(docReceived,TYPE_MSG.PUSH_NEW_FILE);
+		}
+		else
+		{
+			if(doc.getVersionNumber() < docReceived.getVersionNumber())
+			{
+				doc.setFile(docReceived.getFile());
+			}
+		}
+	}
+	
+	/**
+	 * Callback used when a new client is connected on the server content
+	 * @param data
+	 * @param socketChannel
+	 */
 	private void receivedHelloClient(byte[] data, SocketChannel socketChannel) {
 		Client c = nio.getClient(socketChannel);
 		tmp = ByteBuffer.allocate(4);
@@ -142,7 +168,56 @@ public class Server implements I_ServerHandler{
 		int i = tmp.getInt();
 		System.out.println("TUTU"+i);
 		c.setId(i);
-		nio.send(socketChannel, data, TYPE_MSG.ACK);
+		nio.send(socketChannel, data, TYPE_MSG.ACK_HELLO_CLIENT);
 	}
 	
+	
+	/*
+	 * Tools
+	 */
+	/**
+	 * Transform a bytes array in I_Document object
+	 * @param data
+	 * @return
+	 */
+	private I_Document bytesToI_Document(byte[] data){
+		ByteArrayInputStream bis = new ByteArrayInputStream(data);
+		ObjectInput in = null;
+		try {
+			in = new ObjectInputStream(bis);
+			I_Document doc = (I_Document) in.readObject(); 
+			bis.close();
+			in.close();
+			return doc;
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
+	/**
+	 * Transform a I_Document in bytes array
+	 * @param doc
+	 * @return
+	 */
+	private byte[] I_DocumentToByte(I_Document doc){
+		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		ObjectOutput out = null;
+		try {
+			out = new ObjectOutputStream(bos);
+			out.writeObject(doc);
+			byte[] bytes = bos.toByteArray();
+			out.close();
+			bos.close();
+			return bytes;
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+	}
 }
