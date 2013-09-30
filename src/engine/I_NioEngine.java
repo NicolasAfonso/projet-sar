@@ -54,6 +54,6 @@ public interface I_NioEngine {
 
 	public Client getClient(SocketChannel socketChannel);
 	
-	public void pushDocument (I_Document doc, String request);
+	public void push(I_Document doc,TYPE_MSG type);
 	
 }

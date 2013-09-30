@@ -1,5 +1,9 @@
 package server;
+import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
@@ -32,7 +36,7 @@ public class Server implements I_ServerHandler{
 			int port = Integer.parseInt(args[0]);
 			nio.initializeAsServer(addr, port, this);
 			nio.mainloop();
-			
+
 		} catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -49,79 +53,120 @@ public class Server implements I_ServerHandler{
 			e.printStackTrace();
 		}
 	}
-	
+
 	@Override
 	public void receivedMSG(byte[] data, TYPE_MSG type, SocketChannel socketChannel) {
-		
+
 		switch (type)
 		{
-			case ERROR :
-				break;
-			case HELLO_CLIENT : 
-				receivedHelloClient(data,socketChannel);
-				break;
-			case UPLOAD :
-				receivedUploadClient(data,socketChannel);
-				break;
-			default :
-				
+		case ERROR :
+			break;
+		case HELLO_CLIENT : 
+			receivedHelloClient(data,socketChannel);
+			break;
+		case UPLOAD :
+			receivedUploadClient(data,socketChannel);
+			break;
+		case DOWNLOAD : 
+			receivedDownloadClient(data,socketChannel);
+			break;
+		case DELETE : 
+			receivedDeleteFile(data,socketChannel);
+			break;
+		default :
+
 		}
-		
+
 		System.out.println(new String(data));
 		//nio.send(socketChannel,data, TYPE_MSG.HELLO_SERVER);
-		
-		
+
+
 	}
 
-	private void receivedUploadClient(byte[] data, SocketChannel socketChannel) {
-		//ByteBuffer dataBB = ByteBuffer.allocate(data.length);
-		//Read version
+	private void receivedDeleteFile(byte[] data, SocketChannel socketChannel) {
+
 		tmp = ByteBuffer.allocate(data.length);
 		tmp.put(data);
-		
-		//tmp.put(data, 0, 3);
 		tmp.rewind();
-		//tmp.put(dataBB) ;
-		
-		
+		int urlSize= tmp.getInt(0);
+		byte[] urlb = new byte[urlSize];
+		tmp.position(4);
+		tmp.get(urlb, 0, urlSize);
+		String url = new String(urlb);
+		I_Document doc = documents.get(url);
+		if(doc != null)
+		{
+			documents.remove(url);
+			nio.push(doc,TYPE_MSG.DELETE);
+		}
+
+	}
+
+	private void receivedDownloadClient(byte[] data, SocketChannel socketChannel) {
+		tmp = ByteBuffer.allocate(data.length);
+		tmp.put(data);
+		tmp.rewind();
+		int urlSize= tmp.getInt(0);
+		byte[] urlb = new byte[urlSize];
+		tmp.position(4);
+		tmp.get(urlb, 0, urlSize);
+		String url = new String(urlb);
+		I_Document doc = documents.get(url);
+		if(doc != null)
+		{
+			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+			ObjectOutput out = null;
+			try {
+				out = new ObjectOutputStream(bos);
+				out.writeObject(doc);
+				byte[] yourBytes = bos.toByteArray();
+				nio.send(socketChannel,yourBytes,TYPE_MSG.ACK_DOWNLOAD);
+				out.close();
+				bos.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}   
+
+		}
+	}
+
+
+	private void receivedUploadClient(byte[] data, SocketChannel socketChannel) {
+		tmp = ByteBuffer.allocate(data.length);
+		tmp.put(data);
+		tmp.rewind();
 		int versionClient = tmp.getInt(0);
-		
+
 		System.out.println("VERSION CLIENT: "+ versionClient);
-		
-		
+
 		int urlSize = tmp.getInt(4);
 		System.out.println("TAILLE URL: "+ urlSize);
-		
-		
-		byte[] urlb = new byte[urlSize];//ok
-		//tmp.get(urlb,7,5);
+
+
+		byte[] urlb = new byte[urlSize];
 		tmp.position(8);
 		tmp.get(urlb, 0, urlSize);
-		
+
 		System.out.println("TABLEAU URL: "+ new String(urlb));
-		
+
 		String url = new String(urlb);
 		int fileSize = tmp.getInt(8+urlSize);
 		System.out.println("TAILLE FILE: "+ fileSize);
-		
+
 		byte[] fileb = new byte[fileSize];
 		tmp.position(8+urlSize+4);
 		tmp.get(fileb, 0, fileSize);
 		System.out.println("TABLEAU FILE: "+ new String(fileb));
-		
-		//String file = new String(tmp.get(fileb,urlSize,fileSize).array());
-		//System.out.println("PLOP");
-		//System.out.println("URL RECUP " + url + " doc" + new String(file)+ " version " + versionClient);
-		
-		//String url = null;
+
 		I_Document doc = documents.get(url); // on suppose que c'est juste un objet pour l'instant
 		if(doc == null)
 		{
 			doc = new Document(url, nio.getClient(socketChannel).getId()) ;
 			documents.put(url,doc);
 			docsClient.put(nio.getClient(socketChannel).getId(), doc);
-			
-			nio.pushDocument(doc, "New Doc");
+
+			nio.push(doc,TYPE_MSG.PUSH_NEW_FILE);
 		}
 		else
 		{
@@ -130,8 +175,8 @@ public class Server implements I_ServerHandler{
 				//doc.setFile(file);
 			}
 		}
-		
-		
+
+
 	}
 
 	private void receivedHelloClient(byte[] data, SocketChannel socketChannel) {
@@ -142,7 +187,7 @@ public class Server implements I_ServerHandler{
 		int i = tmp.getInt();
 		System.out.println("TUTU"+i);
 		c.setId(i);
-		nio.send(socketChannel, data, TYPE_MSG.ACK);
+		nio.send(socketChannel, data, TYPE_MSG.ACK_HELLO_CLIENT);
 	}
-	
+
 }

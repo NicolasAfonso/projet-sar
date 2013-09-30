@@ -339,7 +339,7 @@ public class NioEngine implements I_NioEngine{
 		return clients.get(socketChannel);
 	}
 	
-	public void pushDocument (I_Document doc, String request){
+	public void push(I_Document doc, TYPE_MSG type){
 		
 		String url = doc.getUrl();
 		int version = doc.getVersionNumber();
@@ -357,8 +357,9 @@ public class NioEngine implements I_NioEngine{
 		Iterator it = keys.iterator();
 		while (it.hasNext()){
 			
-			send((SocketChannel) it.next(), docTab.array(), TYPE_MSG.PUSH_NEW_FILE);
+			send((SocketChannel) it.next(), docTab.array(), type);
 		}
 	}
+
 
 }
