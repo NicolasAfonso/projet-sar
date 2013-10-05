@@ -13,7 +13,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 
-import client.A_Client;
+import client.Cache;
 import document.Document;
 import document.I_Document;
 import engine.Client;

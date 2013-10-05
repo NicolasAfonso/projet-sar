@@ -2,7 +2,7 @@ package client;
 
 import engine.TYPE_MSG;
 
-public interface I_ClientHandler {
+public interface I_CacheHandler {
 	
 	/**
 	 * Client General Callback. Use by NIO layer to notify a new message

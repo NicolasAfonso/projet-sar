@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.Set;
 
 import server.I_ServerHandler;
-import client.I_ClientHandler;
+import client.I_CacheHandler;
 import document.I_Document;
 
 
@@ -27,7 +27,7 @@ public class NioEngine implements I_NioEngine{
 	private InetAddress address ;
 	private int port ;
 	private Selector selector ;
-	private I_ClientHandler handlerClient;
+	private I_CacheHandler handlerClient;
 	private I_ServerHandler handlerServer;
 	private Map<SocketChannel, Client> clients = new HashMap<>();
 
@@ -66,7 +66,7 @@ public class NioEngine implements I_NioEngine{
 	}
 	
 	@Override
-	public void initializeAsClient(InetAddress hostAddress, int port,I_ClientHandler handler){
+	public void initializeAsClient(InetAddress hostAddress, int port,I_CacheHandler handler){
 		try{
 			this.address = hostAddress ;
 			this.port = port ;
@@ -320,10 +320,13 @@ public class NioEngine implements I_NioEngine{
 			if(socketChannel_Client != null)
 			{
 				socketChannel_Client.close();
+				socketChannel_Client.keyFor(selector).cancel();
+				
 			}
 			else
 			{
 				serverChannel.close();
+				serverChannel.keyFor(selector).cancel();
 			}
 
 		} catch (IOException e) {
@@ -359,6 +362,12 @@ public class NioEngine implements I_NioEngine{
 			
 			send((SocketChannel) it.next(), docTab.array(), type);
 		}
+	}
+
+	@Override
+	public void run() {
+		this.mainloop();
+		
 	}
 
 

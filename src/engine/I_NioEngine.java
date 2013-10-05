@@ -4,10 +4,10 @@ import java.net.InetAddress;
 import java.nio.channels.SocketChannel;
 
 import server.I_ServerHandler;
-import client.I_ClientHandler;
+import client.I_CacheHandler;
 import document.I_Document;
 
-public interface I_NioEngine {
+public interface I_NioEngine extends Runnable {
 	
 	/**
 	 * Initialize the engine with the server configuration
@@ -25,7 +25,7 @@ public interface I_NioEngine {
 	 * @param handler
 	 * @throws IOException
 	 */
-	public void initializeAsClient(InetAddress hostAddress,int port, I_ClientHandler handler) throws IOException;
+	public void initializeAsClient(InetAddress hostAddress,int port, I_CacheHandler handler) throws IOException;
 	
 	/**
 	 * Nio Key selector
