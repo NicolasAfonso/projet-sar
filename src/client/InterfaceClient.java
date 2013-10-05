@@ -22,13 +22,7 @@ public class InterfaceClient {
 	public static void main(String[] args) {
 		try {
 			Cache c = new Cache(args); 
-			c.init(args);
-			//Wait
-			System.out.println("Upload Main");
-			I_Document doc = new Document("tutu"+1, 1);
-			doc.setFile(new String("Tutu").getBytes());
-			c.addFile(doc);
-			
+			c.main();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

@@ -311,6 +311,7 @@ public class NioEngine implements I_NioEngine{
 
 		SelectionKey key = socketChannel.keyFor(this.selector);
 		key.interestOps(SelectionKey.OP_WRITE);
+		selector.wakeup();
 	}
 
 	@Override

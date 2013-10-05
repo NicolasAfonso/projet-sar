@@ -13,6 +13,7 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 import javax.swing.plaf.SliderUI;
 
@@ -30,6 +31,8 @@ public class Cache implements I_CacheHandler{
 	ByteBuffer tmp ;
 	private String[] args;
 	Thread nioT ;
+	
+	I_Document tmpD ;
 	
 	public Cache(String[] a)
 	{
@@ -136,10 +139,10 @@ public class Cache implements I_CacheHandler{
 		System.out.println("New Document : "+url +"( Version : "+versionClient+")");
 		urls.add(url);
 		System.out.println("Nombre de documents : " +urls.size());	
-		ByteBuffer docTab = ByteBuffer.allocate(url.length() + 4);
-		docTab.putInt(url.length());
-		docTab.put(url.getBytes());
-		nio.send(docTab.array(),TYPE_MSG.DOWNLOAD);
+//		ByteBuffer docTab = ByteBuffer.allocate(url.length() + 4);
+//		docTab.putInt(url.length());
+//		docTab.put(url.getBytes());
+//		nio.send(docTab.array(),TYPE_MSG.DOWNLOAD);
 
 	}
 
@@ -173,11 +176,9 @@ public class Cache implements I_CacheHandler{
 	 */
 	private void receivedDownloadServer(byte[] data) {
 		I_Document doc = bytesToI_Document(data);
+		tmpD = doc ;
 		System.out.println("Test Download : "+ doc.getOwner() +"-"+doc.getUrl()+"-"+doc.getVersionNumber() );			
-		//TEST : Modify and upload
-		doc.setVersionNumber((doc.getVersionNumber()+1));
-		byte[] docU = I_DocumentToByte(doc);
-		nio.send(docU, TYPE_MSG.UPLOAD);
+		
 	}
 
 
@@ -242,6 +243,42 @@ public class Cache implements I_CacheHandler{
 		}
 		return null;
 	}
+	
+	public void main(){
+		this.init(args);
+
+		 while( nioT.isAlive() ) {
+			 Scanner cmd = new Scanner(System.in);
+				System.out.println("Enter your command :");
+				String message = cmd.nextLine();
+				
+				switch(message)
+				{
+				case "1" :
+					I_Document doc = new Document("tutu"+1, 1);
+					doc.setFile(new String("Tutu").getBytes());
+					this.addFile(doc);
+					break;
+				case "2" :
+					//TEST : Modify and upload
+					String url = urls.get(0);
+					ByteBuffer docTab = ByteBuffer.allocate(url.length() + 4);
+					docTab.putInt(url.length());
+					docTab.put(url.getBytes());
+					nio.send(docTab.array(),TYPE_MSG.DOWNLOAD);
+					break;
+				case "3" :
+					tmpD.setVersionNumber((tmpD.getVersionNumber()+1));
+					byte[] docU = I_DocumentToByte(tmpD);
+					nio.send(docU, TYPE_MSG.UPLOAD);
+					break;
+				case "4" :
+					deleteFile(urls.get(0));
+					break;
+				}
+	}
+	}
+	
 	/**
 	 * Transform a I_Document in bytes array
 	 * @param doc
