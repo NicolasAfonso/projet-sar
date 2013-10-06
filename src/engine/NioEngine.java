@@ -10,8 +10,10 @@ import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.SelectorProvider;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -186,8 +188,10 @@ public class NioEngine implements I_NioEngine{
 				if(numRead==-1)
 				{
 					key.cancel();
+					clients.remove(socketChannel);
 					socketChannel.close();
-					System.out.println("S				TYPE_MSG type = null;IZE numRead = -1 , delete key and close channel");
+					logger.warn("Client deleted READ SIZE ERROR");
+					//System.out.println("STYPE_MSG type = null;IZE numRead = -1 , delete key and close channel");
 					return;
 				}
 
@@ -207,8 +211,10 @@ public class NioEngine implements I_NioEngine{
 				if(numRead==-1)
 				{
 					key.cancel();
+					clients.remove(socketChannel);
 					socketChannel.close();
-					System.out.println(" Type numRead = -1 , delete key and close channel");
+					logger.warn("Client deleted TYPE ERROR");
+					//System.out.println(" Type numRead = -1 , delete key and close channel");
 					return;
 				}
 				if(in.buffin.remaining()==0){
@@ -228,8 +234,10 @@ public class NioEngine implements I_NioEngine{
 					if(numRead==-1)
 					{
 						key.cancel();
+						clients.remove(socketChannel);
 						socketChannel.close();
-						System.err.println(" Data numRead = -1 , delete key and close channel");
+						logger.warn("Client deleted TYPE ERROR");
+						//System.err.println(" Data numRead = -1 , delete key and close channel");
 						return;
 					}
 				}		
@@ -345,6 +353,17 @@ public class NioEngine implements I_NioEngine{
 		return clients.get(socketChannel);
 	}
 	
+	@Override
+	public List<Client> getClients(){
+		Object[] objs= clients.values().toArray();
+		List<Client> clients = new ArrayList<Client>();
+		for(Object o : objs)
+		{
+			clients.add(((Client)o));
+		}
+		return clients;
+	}
+	
 	public void push(I_Document doc, TYPE_MSG type){
 		
 		String url = doc.getUrl();
@@ -361,8 +380,7 @@ public class NioEngine implements I_NioEngine{
 		
 		Set<SocketChannel> keys = clients.keySet();
 		Iterator it = keys.iterator();
-		while (it.hasNext()){
-			
+		while (it.hasNext()){	
 			send((SocketChannel) it.next(), docTab.array(), type);
 		}
 	}

@@ -1,6 +1,9 @@
 package server;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInput;
@@ -12,43 +15,42 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Scanner;
 
 import org.apache.log4j.Logger;
 
-import client.Cache;
 import document.Document;
 import document.I_Document;
+import document.TestDocument;
 import engine.Client;
 import engine.I_NioEngine;
 import engine.NioEngine;
 import engine.TYPE_MSG;
-public class Server implements I_ServerHandler{
+public class Server implements I_ServerHandler,Runnable{
 
 	private HashMap<String,I_Document> documents ;
 	private HashMap<I_Document,LockManager> locks;
 	private HashMap<Integer, I_Document> docsClient ;
 	private I_NioEngine nio ;
-	Thread nioT ;
-	ByteBuffer tmp ;
+	private Thread nioT ;
+	private ByteBuffer tmp ;
 	private static final Logger logger = Logger.getLogger(NioEngine.class);
-	
+	private String backupDirectory ;
 	public Server(String[] args)
 	{
 		documents = new HashMap<>();
 		locks = new HashMap<>();
 		docsClient = new HashMap<>();
 		InetAddress addr;
+		backupDirectory = "backup";
 		try {
 			addr = InetAddress.getByName("localhost");
 			nio= new NioEngine();
 			int port = Integer.parseInt(args[0]);
 			nio.initializeAsServer(addr, port, this);
-			nioT = new Thread(nio);
-			nioT.start();
-			logger.info("Server start on  "+addr.toString()+":"+port);
+			init(addr,port);
 		} catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -57,10 +59,68 @@ public class Server implements I_ServerHandler{
 			e.printStackTrace();
 		}  
 	}
+	
 
+	@Override
+	public void run() {
+		Scanner cmd = new Scanner(System.in);
+		String message ;
+		boolean running = true;
+			while(running) {
+				System.out.println("Enter your command :");
+				message = cmd.nextLine();
+				switch(message)
+				{
+				case "listclient":
+					List<Client> clients = nio.getClients();
+					System.out.println("Clients list :");
+					for(Client c:clients)
+					{
+						System.out.println(c.getId());
+					}
+					break;
+				case "listfile" :
+					List<String> listFic = listDirectory(backupDirectory);
+					System.out.println("List available file");
+					for(String s:listFic)
+					{
+						System.out.println(s);
+					}
+					break;
+				case "listLock":
+					break;
+				case "kill" :
+					running = false;
+					break;
+				}
+		}
+			logger.info("Bye");
+			System.exit(0);
+		
+	}
+	private void init(InetAddress addr,int port)
+	{
+		/*
+		 * Restore document
+		 */
+		logger.info("Server restore documents  ");
+		List<String> listFic = listDirectory(backupDirectory);
+		for(String nameFic: listFic)
+		{
+			I_Document docRestore = this.restoreDocument(backupDirectory,nameFic);
+			logger.info("Restore document "+docRestore.getUrl()+" and push clients ");
+			documents.put(docRestore.getUrl(),docRestore);
+			//docsClient.put(nio.getClient(socketChannel).getId(), docReceived);				
+
+		}
+		nioT = new Thread(nio);
+		nioT.start();
+		logger.info("Server start on  "+addr.toString()+":"+port);
+	}
 	public static void main(String[] args) {
 		try {
-			new Server(args);
+			Server s =new Server(args);
+			s.run();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -87,39 +147,35 @@ public class Server implements I_ServerHandler{
 		case DELETE : 
 			receivedDeleteFile(data,socketChannel);
 			break;
-		
+
 		default :
 
 		}
 
 	}
-	
+
 	private void reveivedListFile(byte[] data, SocketChannel socketChannel) {
 		logger.info("Received LIST_FILE");
-//		if(documents.size()>0)
-//		{
-			Object[] dop = documents.values().toArray();
-			List<String> a = new ArrayList<String>();
-			for(Object o : dop)
-			{
-				a.add(((I_Document)o).getUrl());
-			}
-			ByteArrayOutputStream bos = new ByteArrayOutputStream();
-			ObjectOutput out = null;
-				try {
-					out = new ObjectOutputStream(bos);
-					out.writeObject(a);
-					byte[] docs = bos.toByteArray();
-					out.close();
-					bos.close();
-					nio.send(socketChannel,docs,TYPE_MSG.ACK_LIST_FILE);
-					
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-		//}
-		
+		Object[] dop = documents.values().toArray();
+		List<String> listFile = new ArrayList<String>();
+		for(Object o : dop)
+		{
+			listFile.add(((I_Document)o).getUrl());
+		}
+		ByteArrayOutputStream bos = new ByteArrayOutputStream();
+		ObjectOutput out = null;
+		try {
+			out = new ObjectOutputStream(bos);
+			out.writeObject(listFile);
+			byte[] docs = bos.toByteArray();
+			out.close();
+			bos.close();
+			nio.send(socketChannel,docs,TYPE_MSG.ACK_LIST_FILE);
+
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}	
 	}
 
 	/**
@@ -195,7 +251,8 @@ public class Server implements I_ServerHandler{
 		{
 			logger.info("Create new document "+docReceived.getUrl()+" and push clients ");
 			documents.put(docReceived.getUrl(),docReceived);
-			docsClient.put(nio.getClient(socketChannel).getId(), docReceived);
+			docsClient.put(nio.getClient(socketChannel).getId(), docReceived);				
+			this.backupDocument(backupDirectory,docReceived);
 			nio.push(docReceived,TYPE_MSG.PUSH_NEW_FILE);
 		}
 		else
@@ -206,6 +263,7 @@ public class Server implements I_ServerHandler{
 				doc.setFile(docReceived.getFile());
 				doc.setVersionNumber(docReceived.getVersionNumber()+1);
 				documents.put(doc.getUrl(),doc);
+				this.backupDocument("backup",doc);
 			}
 			else
 			{
@@ -213,7 +271,7 @@ public class Server implements I_ServerHandler{
 			}
 		}
 	}
-	
+
 	/**
 	 * Callback used when a new client is connected on the server content
 	 * @param data
@@ -229,8 +287,8 @@ public class Server implements I_ServerHandler{
 		nio.send(socketChannel, data, TYPE_MSG.ACK_HELLO_CLIENT);
 		logger.info("Received HELLO_CLIENT form "+c.getId());
 	}
-	
-	
+
+
 	/*
 	 * Tools
 	 */
@@ -257,7 +315,7 @@ public class Server implements I_ServerHandler{
 		}
 		return null;
 	}
-	
+
 	/**
 	 * Transform a I_Document in bytes array
 	 * @param doc
@@ -279,4 +337,70 @@ public class Server implements I_ServerHandler{
 		}
 		return null;
 	}
+
+	private void backupDocument(String dir,I_Document doc)
+	{
+		FileOutputStream fichier;
+		try {
+			fichier = new FileOutputStream(dir+"/"+doc.getUrl());
+			ObjectOutputStream oos = new ObjectOutputStream(fichier);
+			oos.writeObject(doc);
+			oos.close();
+			fichier.close();
+			logger.info("Backup :"+doc.getUrl());
+		} catch (FileNotFoundException e) {
+			logger.error("File not found",e);
+
+		} catch (IOException e) {
+			logger.error("Error backup",e);
+		}
+
+	}
+
+	private I_Document restoreDocument(String dir,String backupName)
+	{
+
+		ObjectInputStream ois;
+		try {
+			ois = new ObjectInputStream(new FileInputStream(dir+"/"+backupName));
+			Object o = ois.readObject();
+			ois.close();
+			if(o instanceof Document)
+			{
+				Document doc = (Document) o;
+				logger.info("Test serialization "+ doc.getOwner() + "-" + doc.getUrl()+"-"+doc.getVersionNumber());
+				return doc;
+			}
+			else if(o instanceof TestDocument)
+			{
+				TestDocument doc = (TestDocument) o ;
+				logger.info("Test serialization "+ doc.getOwner() + "-" + doc.getUrl());
+				return doc;
+			}
+		} catch (FileNotFoundException e) {
+			logger.error("Error restore",e);
+		} catch (IOException e) {
+			logger.error("Error restore",e);
+
+		} catch (ClassNotFoundException e) {
+			logger.error("Error restore",e);
+		}
+		return null;
+	}
+
+	private List<String> listDirectory(String dir) {
+		File file = new File(dir);
+		File[] files = file.listFiles();
+		List<String> listFile = new ArrayList<String>();
+		if (files != null) {
+			for (int i = 0; i < files.length; i++) {
+				if (files[i].isFile() == true) {
+					listFile.add(files[i].getName());
+				}
+			}
+			return listFile;
+		}
+		return listFile;
+	}
+
 }

@@ -2,6 +2,7 @@ package engine;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.channels.SocketChannel;
+import java.util.List;
 
 import server.I_ServerHandler;
 import client.I_CacheHandler;
@@ -55,5 +56,6 @@ public interface I_NioEngine extends Runnable {
 	public Client getClient(SocketChannel socketChannel);
 	
 	public void push(I_Document doc,TYPE_MSG type);
+	public List<Client> getClients();
 	
 }
