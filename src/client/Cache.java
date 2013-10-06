@@ -22,27 +22,27 @@ import document.I_Document;
 import engine.I_NioEngine;
 import engine.NioEngine;
 import engine.TYPE_MSG;
-
+import org.apache.log4j.Logger;
 public class Cache implements I_CacheHandler{
 
 	private int id ; 
 	private List<String> urls ;
 	private I_NioEngine nio ;
-	ByteBuffer tmp ;
+	private ByteBuffer tmp ;
 	private String[] args;
-	Thread nioT ;
-	
+	private Thread nioT ;
+	private static final Logger logger = Logger.getLogger(Cache.class);
+	private I_APICache handlerAPI;
 	I_Document tmpD ;
 	
-	public Cache(String[] a)
+	public Cache(String[] a,I_APICache hc)
 	{
 		id = Integer.parseInt(a[0]) ;
 		nio = new NioEngine();
 		urls =  new ArrayList<String>();
-		args = a;
-		
+		args = a;;
 		nioT = new Thread(nio);
-
+		handlerAPI = hc ;
 		//init(args);
 
 	}
@@ -53,7 +53,7 @@ public class Cache implements I_CacheHandler{
 			// Connection
 			addr = InetAddress.getByName("localhost");		
 			nio.initializeAsClient(addr,Integer.parseInt(args[1]),this);
-
+			
 			// send client id to server
 			tmp = ByteBuffer.allocate(4);
 			tmp.putInt(id);
@@ -95,9 +95,36 @@ public class Cache implements I_CacheHandler{
 		case ACK_DOWNLOAD :
 			receivedDownloadServer(data);
 			break;
+		case ACK_LIST_FILE :
+			reveivedListServer(data);
 		default :
 
 		}
+	}
+
+	private void reveivedListServer(byte[] data) {
+		logger.info("Received ACK LIST");
+		ByteArrayInputStream bis = new ByteArrayInputStream(data);
+		ObjectInput in = null;
+		try {
+			in = new ObjectInputStream(bis);
+			List<String> docs = (List<String>) in.readObject(); 
+			bis.close();
+			in.close();
+			
+			for(String s : docs)
+			{
+				urls.add(s);
+			}
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 
 	/**
@@ -106,8 +133,10 @@ public class Cache implements I_CacheHandler{
 	 */
 	private void receivedACKHelloClient(byte[] data) {
 		// Send first document to server (don't need to use the cache)	
-		System.err.println("ACK HELLO");
+
 		//Handler Interface 
+		nio.send("".getBytes(),TYPE_MSG.LIST_FILE);
+		
 	}
 
 	/**
@@ -116,6 +145,7 @@ public class Cache implements I_CacheHandler{
 	 */
 	private void receivedHelloServer(byte[] data) {
 		// TODO Auto-generated method stub
+		logger.info("Received HELLO_SERVER");
 
 	}
 
@@ -124,7 +154,7 @@ public class Cache implements I_CacheHandler{
 	 * @param data
 	 */
 	private void receivedPushNewFile(byte[] data) {
-		System.out.println("NEW FILE HAS BEEN PUSHED !");
+
 		tmp = ByteBuffer.allocate(data.length);
 		tmp.put(data);
 		tmp.rewind();
@@ -135,15 +165,8 @@ public class Cache implements I_CacheHandler{
 		tmp.position(8);
 		tmp.get(urlb, 0, urlSize);
 		String url = new String(urlb);
-
-		System.out.println("New Document : "+url +"( Version : "+versionClient+")");
+		logger.info("Received PUSH_NEW_FILE :"+ url +"-Version  "+versionClient);
 		urls.add(url);
-		System.out.println("Nombre de documents : " +urls.size());	
-//		ByteBuffer docTab = ByteBuffer.allocate(url.length() + 4);
-//		docTab.putInt(url.length());
-//		docTab.put(url.getBytes());
-//		nio.send(docTab.array(),TYPE_MSG.DOWNLOAD);
-
 	}
 
 	/**
@@ -151,23 +174,20 @@ public class Cache implements I_CacheHandler{
 	 * @param data
 	 */
 	private void receivedDeleteFile(byte[] data) {
-		System.out.println("FILE HAS BEEN DELETED !");
+		
+
 		tmp = ByteBuffer.allocate(data.length);
 		tmp.put(data);
 		tmp.rewind();
 		int versionClient = tmp.getInt(0);
 		int urlSize = tmp.getInt(4);
-
 		byte[] urlb = new byte[urlSize];
 		tmp.position(8);
 		tmp.get(urlb, 0, urlSize);
-
 		String url = new String(urlb);
-		System.out.println("File Name: "+ url);
-
 		urls.remove(url);
-		System.out.println("Nombre de documents disponibles : " +urls.size());
-
+		
+		logger.info("Received DELETE_FILE :"+ url +"-Version  "+versionClient);
 	}
 
 	/**
@@ -177,7 +197,8 @@ public class Cache implements I_CacheHandler{
 	private void receivedDownloadServer(byte[] data) {
 		I_Document doc = bytesToI_Document(data);
 		tmpD = doc ;
-		System.out.println("Test Download : "+ doc.getOwner() +"-"+doc.getUrl()+"-"+doc.getVersionNumber() );			
+		logger.info("Received ACK_DOWNLOAD :"+ doc.getUrl() +"-Version  "+doc.getVersionNumber());
+		//TODO : Add to list current file		
 		
 	}
 
@@ -185,8 +206,16 @@ public class Cache implements I_CacheHandler{
 	
 	public void addFile(I_Document doc)
 	{
-		byte[] docUpload = I_DocumentToByte(doc);
-		nio.send(docUpload,TYPE_MSG.UPLOAD);
+		if(!urls.contains(doc.getUrl()))
+		{
+			byte[] docUpload = I_DocumentToByte(doc);
+			nio.send(docUpload,TYPE_MSG.UPLOAD);
+			handlerAPI.handlerAddFile(true);
+		}
+		else
+		{
+			handlerAPI.handlerAddFile(false);
+		}
 	}
 	
 	/**
@@ -195,10 +224,40 @@ public class Cache implements I_CacheHandler{
 	 */
 	public void deleteFile(String urlD)
 	{
-		ByteBuffer docTab = ByteBuffer.allocate(urlD.length() + 4);
-		docTab.putInt(urlD.length());
-		docTab.put(urlD.getBytes());
-		nio.send(docTab.array(),TYPE_MSG.DELETE);
+		if(urls.contains(urlD))
+		{
+			ByteBuffer docTab = ByteBuffer.allocate(urlD.length() + 4);
+			docTab.putInt(urlD.length());
+			docTab.put(urlD.getBytes());
+			nio.send(docTab.array(),TYPE_MSG.DELETE);
+			handlerAPI.handlerDeleteFile(true);
+		}
+	}
+	
+	public void listFile()
+	{					
+		handlerAPI.handlerListFile(urls);
+	}
+	
+	public void lockFile(String url){
+		if(urls.contains(url))
+		{
+			ByteBuffer docTab = ByteBuffer.allocate(url.length() + 4);
+			docTab.putInt(url.length());
+			docTab.put(url.getBytes());
+			nio.send(docTab.array(),TYPE_MSG.DOWNLOAD);
+			handlerAPI.handlerLockFile(true);
+		}
+		else
+		{
+			handlerAPI.handlerLockFile(false);
+		}
+	}
+	
+	public void updateFile(){
+		byte[] docU = I_DocumentToByte(tmpD);
+		nio.send(docU, TYPE_MSG.UPLOAD);
+		handlerAPI.handlerUpdateFile(true);
 	}
 	
 	/**
@@ -244,40 +303,6 @@ public class Cache implements I_CacheHandler{
 		return null;
 	}
 	
-	public void main(){
-		this.init(args);
-
-		 while( nioT.isAlive() ) {
-			 Scanner cmd = new Scanner(System.in);
-				System.out.println("Enter your command :");
-				String message = cmd.nextLine();
-				
-				switch(message)
-				{
-				case "1" :
-					I_Document doc = new Document("tutu"+1, 1);
-					doc.setFile(new String("Tutu").getBytes());
-					this.addFile(doc);
-					break;
-				case "2" :
-					//TEST : Modify and upload
-					String url = urls.get(0);
-					ByteBuffer docTab = ByteBuffer.allocate(url.length() + 4);
-					docTab.putInt(url.length());
-					docTab.put(url.getBytes());
-					nio.send(docTab.array(),TYPE_MSG.DOWNLOAD);
-					break;
-				case "3" :
-					tmpD.setVersionNumber((tmpD.getVersionNumber()+1));
-					byte[] docU = I_DocumentToByte(tmpD);
-					nio.send(docU, TYPE_MSG.UPLOAD);
-					break;
-				case "4" :
-					deleteFile(urls.get(0));
-					break;
-				}
-	}
-	}
 	
 	/**
 	 * Transform a I_Document in bytes array

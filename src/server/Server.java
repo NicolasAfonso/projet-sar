@@ -11,7 +11,12 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
+
+import org.apache.log4j.Logger;
 
 import client.Cache;
 import document.Document;
@@ -26,7 +31,10 @@ public class Server implements I_ServerHandler{
 	private HashMap<I_Document,LockManager> locks;
 	private HashMap<Integer, I_Document> docsClient ;
 	private I_NioEngine nio ;
+	Thread nioT ;
 	ByteBuffer tmp ;
+	private static final Logger logger = Logger.getLogger(NioEngine.class);
+	
 	public Server(String[] args)
 	{
 		documents = new HashMap<>();
@@ -38,8 +46,9 @@ public class Server implements I_ServerHandler{
 			nio= new NioEngine();
 			int port = Integer.parseInt(args[0]);
 			nio.initializeAsServer(addr, port, this);
-			nio.mainloop();
-
+			nioT = new Thread(nio);
+			nioT.start();
+			logger.info("Server start on  "+addr.toString()+":"+port);
 		} catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -66,6 +75,9 @@ public class Server implements I_ServerHandler{
 		case HELLO_CLIENT : 
 			receivedHelloClient(data,socketChannel);
 			break;
+		case LIST_FILE :
+			reveivedListFile(data,socketChannel);
+			break;
 		case UPLOAD :
 			receivedUploadClient(data,socketChannel);
 			break;
@@ -75,12 +87,41 @@ public class Server implements I_ServerHandler{
 		case DELETE : 
 			receivedDeleteFile(data,socketChannel);
 			break;
+		
 		default :
 
 		}
 
 	}
 	
+	private void reveivedListFile(byte[] data, SocketChannel socketChannel) {
+		logger.info("Received LIST_FILE");
+//		if(documents.size()>0)
+//		{
+			Object[] dop = documents.values().toArray();
+			List<String> a = new ArrayList<String>();
+			for(Object o : dop)
+			{
+				a.add(((I_Document)o).getUrl());
+			}
+			ByteArrayOutputStream bos = new ByteArrayOutputStream();
+			ObjectOutput out = null;
+				try {
+					out = new ObjectOutputStream(bos);
+					out.writeObject(a);
+					byte[] docs = bos.toByteArray();
+					out.close();
+					bos.close();
+					nio.send(socketChannel,docs,TYPE_MSG.ACK_LIST_FILE);
+					
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+		//}
+		
+	}
+
 	/**
 	 * Callback used when a client delete a document
 	 * @param data
@@ -101,6 +142,12 @@ public class Server implements I_ServerHandler{
 		{
 			documents.remove(url);
 			nio.push(doc,TYPE_MSG.DELETE);
+			logger.info("Remove document "+doc.getUrl()+" and push clients");
+		}
+		else
+		{
+			Client c = nio.getClient(socketChannel);
+			logger.warn("Received bad remove request "+ "from "+c.getId());
 		}
 
 	}
@@ -111,6 +158,7 @@ public class Server implements I_ServerHandler{
 	 * @param socketChannel
 	 */
 	private void receivedDownloadClient(byte[] data, SocketChannel socketChannel) {
+		Client c = nio.getClient(socketChannel);
 		tmp = ByteBuffer.allocate(data.length);
 		tmp.put(data);
 		tmp.rewind();
@@ -124,9 +172,11 @@ public class Server implements I_ServerHandler{
 		{
 			byte[] docD = I_DocumentToByte(doc);
 			nio.send(socketChannel,docD,TYPE_MSG.ACK_DOWNLOAD);
+			logger.info("Send document "+doc.getUrl()+" to "+c.getId());
 		}
 		else
 		{
+			logger.warn("Received bad document request "+ "from "+c.getId());
 			nio.send(socketChannel,"ERROR".getBytes(),TYPE_MSG.ERROR);
 		}
 	}
@@ -136,21 +186,30 @@ public class Server implements I_ServerHandler{
 	 * @param data
 	 * @param socketChannel
 	 */
-	private void receivedUploadClient(byte[] data, SocketChannel socketChannel) {	
+	private void receivedUploadClient(byte[] data, SocketChannel socketChannel) {
+		Client c = nio.getClient(socketChannel);
+		logger.info("Received UPLOAD form "+c.getId());
 		I_Document docReceived = bytesToI_Document(data);
-		System.out.println("Received : "+ docReceived.getOwner() +"-"+docReceived.getUrl()+"-"+docReceived.getVersionNumber() );
 		I_Document doc = documents.get(docReceived.getUrl()); // on suppose que c'est juste un objet pour l'instant
 		if(doc == null)
 		{
+			logger.info("Create new document "+docReceived.getUrl()+" and push clients ");
 			documents.put(docReceived.getUrl(),docReceived);
 			docsClient.put(nio.getClient(socketChannel).getId(), docReceived);
 			nio.push(docReceived,TYPE_MSG.PUSH_NEW_FILE);
 		}
 		else
 		{
-			if(doc.getVersionNumber() < docReceived.getVersionNumber())
+			if(doc.getVersionNumber() <= docReceived.getVersionNumber())
 			{
+				logger.info("Received : "+ docReceived.getOwner() +"-"+docReceived.getUrl()+"-"+docReceived.getVersionNumber() );
 				doc.setFile(docReceived.getFile());
+				doc.setVersionNumber(docReceived.getVersionNumber()+1);
+				documents.put(doc.getUrl(),doc);
+			}
+			else
+			{
+				logger.warn("Received old version document "+ docReceived.getUrl() +"from "+c.getId());
 			}
 		}
 	}
@@ -166,9 +225,9 @@ public class Server implements I_ServerHandler{
 		tmp.put(data);
 		tmp.rewind();
 		int i = tmp.getInt();
-		System.out.println("TUTU"+i);
 		c.setId(i);
 		nio.send(socketChannel, data, TYPE_MSG.ACK_HELLO_CLIENT);
+		logger.info("Received HELLO_CLIENT form "+c.getId());
 	}
 	
 	
