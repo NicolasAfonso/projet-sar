@@ -38,6 +38,7 @@ public class Server implements I_ServerHandler,Runnable{
 	private ByteBuffer tmp ;
 	private static final Logger logger = Logger.getLogger(NioEngine.class);
 	private String backupDirectory ;
+	private String locksDirectory;
 	public Server(String[] args)
 	{
 		documents = new HashMap<>();
@@ -45,6 +46,7 @@ public class Server implements I_ServerHandler,Runnable{
 		docsClient = new HashMap<>();
 		InetAddress addr;
 		backupDirectory = "backup";
+		locksDirectory = "lock";
 		try {
 			addr = InetAddress.getByName("localhost");
 			nio= new NioEngine();
@@ -59,44 +61,45 @@ public class Server implements I_ServerHandler,Runnable{
 			e.printStackTrace();
 		}  
 	}
-	
+
 
 	@Override
 	public void run() {
 		Scanner cmd = new Scanner(System.in);
 		String message ;
 		boolean running = true;
-			while(running) {
-				System.out.println("Enter your command :");
-				message = cmd.nextLine();
-				switch(message)
+		while(running) {
+			cmd.nextLine();
+			System.out.println("Enter your command :");
+			message = cmd.nextLine();
+			switch(message)
+			{
+			case "listclient":
+				List<Client> clients = nio.getClients();
+				System.out.println("Clients list :");
+				for(Client c:clients)
 				{
-				case "listclient":
-					List<Client> clients = nio.getClients();
-					System.out.println("Clients list :");
-					for(Client c:clients)
-					{
-						System.out.println(c.getId());
-					}
-					break;
-				case "listfile" :
-					List<String> listFic = listDirectory(backupDirectory);
-					System.out.println("List available file");
-					for(String s:listFic)
-					{
-						System.out.println(s);
-					}
-					break;
-				case "listLock":
-					break;
-				case "kill" :
-					running = false;
-					break;
+					System.out.println(c.getId());
 				}
+				break;
+			case "listfile" :
+				List<String> listFic = listDirectory(backupDirectory);
+				System.out.println("List available file");
+				for(String s:listFic)
+				{
+					System.out.println(s);
+				}
+				break;
+			case "listLock":
+				break;
+			case "kill" :
+				running = false;
+				break;
+			}
 		}
-			logger.info("Bye");
-			System.exit(0);
-		
+		logger.info("Bye");
+		System.exit(0);
+
 	}
 	private void init(InetAddress addr,int port)
 	{
@@ -113,10 +116,24 @@ public class Server implements I_ServerHandler,Runnable{
 			//docsClient.put(nio.getClient(socketChannel).getId(), docReceived);				
 
 		}
+
+		logger.info("Server restore locks  ");
+		listFic = listDirectory(locksDirectory);
+		for(String nameFic: listFic)
+		{
+			LockManager lockRestore = this.restoreLock(locksDirectory,nameFic);
+			logger.info("Restore lock on"+lockRestore.getUrlD());
+			locks.put(documents.get(lockRestore.getUrlD()),lockRestore);
+			//docsClient.put(nio.getClient(socketChannel).getId(), docReceived);				
+
+		}
 		nioT = new Thread(nio);
 		nioT.start();
 		logger.info("Server start on  "+addr.toString()+":"+port);
 	}
+
+
+
 	public static void main(String[] args) {
 		try {
 			Server s =new Server(args);
@@ -144,6 +161,9 @@ public class Server implements I_ServerHandler,Runnable{
 		case DOWNLOAD : 
 			receivedDownloadClient(data,socketChannel);
 			break;
+		case LOCK:
+			receivedLockClient(data,socketChannel);
+			break;
 		case DELETE : 
 			receivedDeleteFile(data,socketChannel);
 			break;
@@ -153,6 +173,52 @@ public class Server implements I_ServerHandler,Runnable{
 		}
 
 	}
+
+	private void receivedLockClient(byte[] data, SocketChannel socketChannel) {
+		Client c = nio.getClient(socketChannel);
+		tmp = ByteBuffer.allocate(data.length);
+		tmp.put(data);
+		tmp.rewind();
+		int urlSize= tmp.getInt(0);
+		byte[] urlb = new byte[urlSize];
+		tmp.position(4);
+		tmp.get(urlb, 0, urlSize);
+		String url = new String(urlb);
+		I_Document doc = documents.get(url);
+		if(doc != null)
+		{
+			LockManager lock = locks.get(doc);
+			if(lock.getLock()==-1)
+			{
+				lock.setLock(c.getId());
+				nio.send(this.getClientSocketChannel(c.getId()),doc.getUrl().getBytes(),TYPE_MSG.ACK_LOCK);
+				logger.info("Give Lock on "+ doc.getUrl()+" to " +"-"+c.getId());	
+			}
+			else 
+				{
+					if(lock.getLock()==c.getId()){
+						logger.info("Already lock for this client");
+					}
+					else{
+							if(lock.getWaitLock().contains(c.getId()))
+							{
+								logger.info("Already existing waitLock for this client");
+							}
+							else
+							{
+								lock.addWaitLock(c.getId());
+								logger.info(c.getId() + " wait Lock on "+ doc.getUrl());
+							}
+					}
+			}
+		}
+		else
+		{
+			logger.error("Erreur Lock : File not found");
+		}
+
+	}
+
 
 	private void reveivedListFile(byte[] data, SocketChannel socketChannel) {
 		logger.info("Received LIST_FILE");
@@ -198,7 +264,10 @@ public class Server implements I_ServerHandler,Runnable{
 		{
 			documents.remove(url);
 			nio.push(doc,TYPE_MSG.DELETE);
+			this.deleteFile(backupDirectory,url);
+			this.deleteFile(locksDirectory, url);
 			logger.info("Remove document "+doc.getUrl()+" and push clients");
+
 		}
 		else
 		{
@@ -235,7 +304,7 @@ public class Server implements I_ServerHandler,Runnable{
 			logger.warn("Received bad document request "+ "from "+c.getId());
 			nio.send(socketChannel,"ERROR".getBytes(),TYPE_MSG.ERROR);
 		}
-	}
+	} 
 
 	/**
 	 * Callback used when a client upload a document
@@ -251,8 +320,10 @@ public class Server implements I_ServerHandler,Runnable{
 		{
 			logger.info("Create new document "+docReceived.getUrl()+" and push clients ");
 			documents.put(docReceived.getUrl(),docReceived);
-			docsClient.put(nio.getClient(socketChannel).getId(), docReceived);				
+			docsClient.put(nio.getClient(socketChannel).getId(), docReceived);
+			locks.put(docReceived,new LockManager(docReceived.getUrl()));
 			this.backupDocument(backupDirectory,docReceived);
+			this.backupLock(locksDirectory,locks.get(docReceived));
 			nio.push(docReceived,TYPE_MSG.PUSH_NEW_FILE);
 		}
 		else
@@ -263,6 +334,20 @@ public class Server implements I_ServerHandler,Runnable{
 				doc.setFile(docReceived.getFile());
 				doc.setVersionNumber(docReceived.getVersionNumber()+1);
 				documents.put(doc.getUrl(),doc);
+				LockManager lock = locks.get(doc);
+				int nextClient = lock.nextLock();
+				if(nextClient !=-1)
+				{
+					lock.setLock(nextClient);
+					logger.info("Give lock on "+doc.getUrl()+" to "+nextClient);
+					nio.send(this.getClientSocketChannel(nextClient),I_DocumentToByte(doc),TYPE_MSG.ACK_DOWNLOAD);
+					logger.info("Send document "+doc.getUrl()+" to "+nextClient);
+
+				}
+				else
+				{
+					lock.setLock(-1);
+				}
 				this.backupDocument("backup",doc);
 			}
 			else
@@ -271,6 +356,20 @@ public class Server implements I_ServerHandler,Runnable{
 			}
 		}
 	}
+
+
+	private SocketChannel getClientSocketChannel(int nextClient) {
+		List<Client> clients = nio.getClients();
+		for(Client c:clients)
+		{
+			if(c.getId()==nextClient)
+			{
+				return c.getSocketChannel();
+			}
+		}
+		return null;
+	}
+
 
 	/**
 	 * Callback used when a new client is connected on the server content
@@ -359,7 +458,6 @@ public class Server implements I_ServerHandler,Runnable{
 
 	private I_Document restoreDocument(String dir,String backupName)
 	{
-
 		ObjectInputStream ois;
 		try {
 			ois = new ObjectInputStream(new FileInputStream(dir+"/"+backupName));
@@ -386,6 +484,52 @@ public class Server implements I_ServerHandler,Runnable{
 			logger.error("Error restore",e);
 		}
 		return null;
+	}
+
+	private void backupLock(String locksDirectory, LockManager lockManager) {
+		FileOutputStream fichier;
+		try {
+			fichier = new FileOutputStream(locksDirectory+"/"+lockManager.getUrlD());
+			ObjectOutputStream oos = new ObjectOutputStream(fichier);
+			oos.writeObject(lockManager);
+			oos.close();
+			fichier.close();
+			logger.info("Backup :"+lockManager.getUrlD());
+		} catch (FileNotFoundException e) {
+			logger.error("File not found",e);
+
+		} catch (IOException e) {
+			logger.error("Error backup",e);
+		}
+
+	}
+
+	private LockManager restoreLock(String locksDirectory, String nameFic) {
+		ObjectInputStream ois;
+		try {
+			ois = new ObjectInputStream(new FileInputStream(locksDirectory+"/"+nameFic));
+			Object o = ois.readObject();
+			ois.close();
+			if(o instanceof LockManager)
+			{
+				LockManager lock = (LockManager) o;
+				logger.info("Test serialization "+ lock.getUrlD());
+				return lock;
+			}
+		} catch (FileNotFoundException e) {
+			logger.error("Error restore",e);
+		} catch (IOException e) {
+			logger.error("Error restore",e);
+
+		} catch (ClassNotFoundException e) {
+			logger.error("Error restore",e);
+		}
+		return null;
+	}
+
+	private void deleteFile(String dir,String file){
+		File f = new File(dir+"/"+file);
+		f.delete();
 	}
 
 	private List<String> listDirectory(String dir) {

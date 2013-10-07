@@ -35,12 +35,19 @@ public class NioEngine implements I_NioEngine{
 	private I_CacheHandler handlerClient;
 	private I_ServerHandler handlerServer;
 	private Map<SocketChannel, Client> clients = new HashMap<>();
+	//private Map<Client,SocketChannel> socketChannels = new HashMap<>();
+	private Map<Integer,Client> clientsID = new HashMap<>();
 	private static final Logger logger = Logger.getLogger(NioEngine.class);
 	//Server info
 	private ServerSocketChannel serverChannel ;
 
 	//Client info 
 	private SocketChannel socketChannel_Client  ;
+	public NioEngine(){
+		//Server info
+		serverChannel=null ;
+		socketChannel_Client =null ;
+	}
 
 	/**
 	 * Initialize the engine with the server configuration
@@ -83,13 +90,19 @@ public class NioEngine implements I_NioEngine{
 			socketChannel_Client.socket().setTcpNoDelay(true);
 			socketChannel_Client.connect(new InetSocketAddress(hostAddress, this.port));
 			selector = SelectorProvider.provider().openSelector();
-			clients.put(socketChannel_Client, new Client());
+			clients.put(socketChannel_Client, new Client(socketChannel_Client));
 			//Listen client's channel
 			socketChannel_Client.register(selector, SelectionKey.OP_CONNECT);
 			//logger.info("Created client");
 
 		}catch(Exception e){
 			logger.error("Initialize client error :",e);
+			try {
+				socketChannel_Client.close();
+			} catch (IOException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
 		}
 	}
 
@@ -140,7 +153,10 @@ public class NioEngine implements I_NioEngine{
 			logger.info("Client connected : "+socket.toString());
 
 			//Associate the socket and Client
-			clients.put(socketChannel,new Client());
+			Client c = new Client(socketChannel) ;
+			clients.put(socketChannel,c);
+
+			
 			// Wait a READ event. 
 			socketChannel.register(this.selector, SelectionKey.OP_READ);
 		} catch (IOException e) {
@@ -190,6 +206,11 @@ public class NioEngine implements I_NioEngine{
 					key.cancel();
 					clients.remove(socketChannel);
 					socketChannel.close();
+					if(socketChannel_Client!=null)
+					{
+						socketChannel_Client.close();
+						handlerClient.serverNotAvailable();
+					}
 					logger.warn("Client deleted READ SIZE ERROR");
 					//System.out.println("STYPE_MSG type = null;IZE numRead = -1 , delete key and close channel");
 					return;
@@ -389,6 +410,35 @@ public class NioEngine implements I_NioEngine{
 	public void run() {
 		this.mainloop();
 		
+	}
+
+	@Override
+	public void reconnect(InetAddress hostAddress,int port) throws InterruptedException {
+		if(socketChannel_Client!=null)	
+		try {
+				socketChannel_Client.close();
+				selector.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+
+	}
+
+	@Override
+	public boolean isConnected() {
+		if(socketChannel_Client !=null)
+		{
+			try {
+				socketChannel_Client.finishConnect();			
+				return socketChannel_Client.isConnected();
+			} catch (IOException e) {
+				return false;
+			}
+
+		}
+		return false;
 	}
 
 

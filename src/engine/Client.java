@@ -1,14 +1,36 @@
 package engine;
 
-public class Client {
+import java.io.Serializable;
+import java.nio.channels.SocketChannel;
+
+public class Client implements Serializable {
 	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -6048411205623655122L;
 	private int id;
 	private BufferIn buffin;
 	private BufferOut buffout;
-	
-	public Client(){
+	private SocketChannel socketChannel;
+	/**
+	 * @return the socketChannel
+	 */
+	public SocketChannel getSocketChannel() {
+		return socketChannel;
+	}
+
+	/**
+	 * @param socketChannel the socketChannel to set
+	 */
+	public void setSocketChannel(SocketChannel socketChannel) {
+		this.socketChannel = socketChannel;
+	}
+
+	public Client(SocketChannel s){
 		setBuffin(new BufferIn());
 		setBuffout(new BufferOut());
+		socketChannel = s ;
 	}
 
 	/**

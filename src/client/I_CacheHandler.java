@@ -10,4 +10,6 @@ public interface I_CacheHandler {
 	 * @param type
 	 */
 	public void receivedMSG(byte[] array, TYPE_MSG type);
+
+	public void serverNotAvailable();
 }
