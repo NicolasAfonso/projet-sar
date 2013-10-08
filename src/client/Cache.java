@@ -285,6 +285,7 @@ public class Cache implements I_CacheHandler{
 	public void updateFile(){
 		byte[] docU = I_DocumentToByte(tmpD);
 		nio.send(docU, TYPE_MSG.UPLOAD);
+		logger.info("FILE UPDATED");
 		handlerAPI.handlerUpdateFile(true);
 	}
 
@@ -356,6 +357,7 @@ public class Cache implements I_CacheHandler{
 
 	@Override
 	public void serverNotAvailable() {
+		logger.info("Server isn't available");
 		boolean serverReboot = false;
 		while(!serverReboot)
 		{			
@@ -370,6 +372,7 @@ public class Cache implements I_CacheHandler{
 
 			}
 		}
+		logger.info("Server available");
 		handlerAPI.handlerServerAvailable(true);
 		tmp = ByteBuffer.allocate(4);
 		tmp.putInt(id);

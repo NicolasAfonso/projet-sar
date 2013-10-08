@@ -1,6 +1,7 @@
 package client;
 import java.util.List;
 import java.util.Scanner;
+import java.util.logging.Logger;
 
 import document.Document;
 import document.I_Document;
@@ -115,7 +116,7 @@ public class InterfaceClient implements I_APICache {
 
 	@Override
 	public void handlerUpdateFile(boolean state) {
-		// TODO Auto-generated method stub
+		
 
 	}
 	//

@@ -122,7 +122,7 @@ public class Server implements I_ServerHandler,Runnable{
 		for(String nameFic: listFic)
 		{
 			LockManager lockRestore = this.restoreLock(locksDirectory,nameFic);
-			logger.info("Restore lock on"+lockRestore.getUrlD());
+			logger.info("Restore lock on "+lockRestore.getUrlD());
 			locks.put(documents.get(lockRestore.getUrlD()),lockRestore);
 			//docsClient.put(nio.getClient(socketChannel).getId(), docReceived);				
 
@@ -191,6 +191,7 @@ public class Server implements I_ServerHandler,Runnable{
 			if(lock.getLock()==-1)
 			{
 				lock.setLock(c.getId());
+				this.backupLock(locksDirectory, lock);
 				nio.send(this.getClientSocketChannel(c.getId()),doc.getUrl().getBytes(),TYPE_MSG.ACK_LOCK);
 				logger.info("Give Lock on "+ doc.getUrl()+" to " +"-"+c.getId());	
 			}
@@ -198,6 +199,7 @@ public class Server implements I_ServerHandler,Runnable{
 				{
 					if(lock.getLock()==c.getId()){
 						logger.info("Already lock for this client");
+						nio.send(this.getClientSocketChannel(c.getId()),doc.getUrl().getBytes(),TYPE_MSG.ACK_LOCK);
 					}
 					else{
 							if(lock.getWaitLock().contains(c.getId()))
@@ -207,7 +209,8 @@ public class Server implements I_ServerHandler,Runnable{
 							else
 							{
 								lock.addWaitLock(c.getId());
-								logger.info(c.getId() + " wait Lock on "+ doc.getUrl());
+								this.backupLock(locksDirectory, lock);
+								logger.info("Wait Lock on "+ doc.getUrl() + " by Client "+c.getId());
 							}
 					}
 			}
@@ -349,6 +352,7 @@ public class Server implements I_ServerHandler,Runnable{
 					lock.setLock(-1);
 				}
 				this.backupDocument("backup",doc);
+				this.backupLock(locksDirectory,lock);
 			}
 			else
 			{
@@ -446,7 +450,7 @@ public class Server implements I_ServerHandler,Runnable{
 			oos.writeObject(doc);
 			oos.close();
 			fichier.close();
-			logger.info("Backup :"+doc.getUrl());
+			logger.info("Backup DOC:"+doc.getUrl());
 		} catch (FileNotFoundException e) {
 			logger.error("File not found",e);
 
@@ -494,7 +498,7 @@ public class Server implements I_ServerHandler,Runnable{
 			oos.writeObject(lockManager);
 			oos.close();
 			fichier.close();
-			logger.info("Backup :"+lockManager.getUrlD());
+			logger.info("Backup LOCK :"+lockManager.getUrlD());
 		} catch (FileNotFoundException e) {
 			logger.error("File not found",e);
 
