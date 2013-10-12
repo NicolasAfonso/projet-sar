@@ -1,9 +1,7 @@
 package engine;
 
-import java.io.Serializable;
-
 public enum TYPE_MSG{
-	ERROR,HELLO_CLIENT,HELLO_SERVER,LOCK,UNLOCK,UPLOAD,DOWNLOAD,DELETE,PUSH_NEW_FILE,LIST_FILE,ACK,ACK_HELLO_CLIENT,ACK_LOCK,ACK_DOWNLOAD,ACK_LIST_FILE;
+	ERROR,HELLO_CLIENT,HELLO_SERVER,LOCK,UNLOCK,UPLOAD,DOWNLOAD,DELETE,PUSH_NEW_FILE,LIST_FILE,ACK,ACK_HELLO_CLIENT,ACK_LOCK,ACK_UNLOCK,ACK_DOWNLOAD,ACK_UPLOAD,ACK_LIST_FILE;
 
 
 	public static TYPE_MSG valueOf(int i)
@@ -37,8 +35,12 @@ public enum TYPE_MSG{
 			case 12 :
 				return ACK_LOCK;
 			case 13 :
-				return ACK_DOWNLOAD;
+				return ACK_UNLOCK;
 			case 14 :
+				return ACK_DOWNLOAD;
+			case 15 : 
+				return ACK_UPLOAD;
+			case 16 :
 				return ACK_LIST_FILE;
 			default :
 				return ERROR;

@@ -87,6 +87,7 @@ public class Cache implements I_CacheHandler{
 		switch (type)
 		{
 		case ERROR :
+			receivedError(data);
 			break;
 		case HELLO_SERVER : 
 			receivedHelloServer(data);
@@ -103,26 +104,50 @@ public class Cache implements I_CacheHandler{
 		case ACK_LOCK : 
 			reveivedACKLockServer(data);
 			break;
+		case ACK_UNLOCK : 
+			reveivedACKUnlockServer(data);
+			break;
 		case ACK_DOWNLOAD :
 			receivedDownloadServer(data);
 			break;
+		case ACK_UPLOAD :
+			receivedUploadServer(data);
+			break;
 		case ACK_LIST_FILE :
 			reveivedListServer(data);
+			break;
 		default :
 
 		}
 	}
 
+	private void reveivedACKUnlockServer(byte[] data) {
+		logger.info("File unlocked : "+new String(data));
+		
+	}
+
+	private void receivedUploadServer(byte[] data) {
+		logger.info("File updated : "+new String(data));
+
+	}
+
+	private void receivedError(byte[] data) {
+		logger.warn(new String(data));
+
+	}
+
 	private void reveivedACKLockServer(byte[] data) {
-		tmp = ByteBuffer.allocate(data.length);
-		tmp.put(data);
-		tmp.rewind();
-		byte[] urlb = new byte[data.length];
-		tmp.get(urlb,0,data.length);
-		tmp = ByteBuffer.allocate(urlb.length+4);
-		tmp.putInt(urlb.length);
-		tmp.put(urlb);
-		nio.send(tmp.array(),TYPE_MSG.DOWNLOAD);
+		//		tmp = ByteBuffer.allocate(data.length);
+		//		tmp.put(data);
+		//		tmp.rewind();
+		//		byte[] urlb = new byte[data.length];
+		//		tmp.get(urlb,0,data.length);
+		//		tmp = ByteBuffer.allocate(urlb.length+4);
+		//		tmp.putInt(urlb.length);
+		//		tmp.put(urlb);
+		//		nio.send(tmp.array(),TYPE_MSG.DOWNLOAD);
+		logger.info("Received Lock on "+ new String(data));
+
 
 	}
 
@@ -283,12 +308,33 @@ public class Cache implements I_CacheHandler{
 	}
 
 	public void updateFile(){
-		byte[] docU = I_DocumentToByte(tmpD);
-		nio.send(docU, TYPE_MSG.UPLOAD);
-		logger.info("FILE UPDATED");
-		handlerAPI.handlerUpdateFile(true);
+		if(tmpD !=null)
+		{
+			tmpD.setVersionNumber(tmpD.getVersionNumber()+1);
+			byte[] docU = I_DocumentToByte(tmpD);
+			nio.send(docU, TYPE_MSG.UPLOAD);
+			handlerAPI.handlerUpdateFile(true);
+		}
+		else
+		{
+			handlerAPI.handlerUpdateFile(false);
+		}
 	}
 
+	public void downloadFile(String message) {
+		tmp = ByteBuffer.allocate(message.length()+4);
+		tmp.putInt(message.length());
+		tmp.put(message.getBytes());
+		nio.send(tmp.array(),TYPE_MSG.DOWNLOAD);
+	}
+
+	public void unlockFile(String url)
+	{
+			ByteBuffer docTab = ByteBuffer.allocate(url.length() + 4);
+			docTab.putInt(url.length());
+			docTab.put(url.getBytes());
+			nio.send(docTab.array(),TYPE_MSG.UNLOCK);
+	}
 	/**
 	 * @param cache the cache to set
 	 */
@@ -367,7 +413,7 @@ public class Cache implements I_CacheHandler{
 				serverReboot = nio.isConnected();
 				handlerAPI.handlerServerAvailable(false);
 			} catch (IOException e) {
-				
+
 			} catch (InterruptedException e) {
 
 			}
@@ -379,5 +425,7 @@ public class Cache implements I_CacheHandler{
 		nio.send(tmp.array(), TYPE_MSG.HELLO_CLIENT);
 		nio.mainloop();
 	}
+
+
 
 }

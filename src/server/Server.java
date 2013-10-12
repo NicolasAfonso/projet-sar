@@ -164,6 +164,9 @@ public class Server implements I_ServerHandler,Runnable{
 		case LOCK:
 			receivedLockClient(data,socketChannel);
 			break;
+		case UNLOCK :
+			receivedUnlockClient(data,socketChannel);
+			break;
 		case DELETE : 
 			receivedDeleteFile(data,socketChannel);
 			break;
@@ -173,6 +176,55 @@ public class Server implements I_ServerHandler,Runnable{
 		}
 
 	}
+
+	private void receivedUnlockClient(byte[] data, SocketChannel socketChannel) {
+		Client client = nio.getClient(socketChannel);
+		if(docsLockClient.containsKey(client.getId()))
+		{
+			tmp = ByteBuffer.allocate(data.length);
+			tmp.put(data);
+			tmp.rewind();
+			int urlSize= tmp.getInt(0);
+			byte[] urlb = new byte[urlSize];
+			tmp.position(4);
+			tmp.get(urlb, 0, urlSize);
+			String url = new String(urlb);
+			I_Document docRequest = documents.get(url);
+			LockManager lock = locks.get(docRequest);
+			if(lock.getLock() == client.getId())
+			{
+				logger.info("Received unlock on "+ docRequest.getUrl() + "form client "+client.getId());
+				docsLockClient.remove(client.getId());
+				nio.send(this.getClientSocketChannel(client.getId()),docRequest.getUrl().getBytes(),TYPE_MSG.ACK_UNLOCK);
+				int nextClient = lock.nextLock();
+				if(nextClient !=-1)
+				{
+					lock.setLock(nextClient);
+					logger.info("Give lock on "+docRequest.getUrl()+" to "+nextClient);
+					docsLockClient.put(nextClient,docRequest);
+					nio.send(this.getClientSocketChannel(nextClient),I_DocumentToByte(docRequest),TYPE_MSG.ACK_LOCK);
+					logger.info("Send lock for "+docRequest.getUrl()+" to "+nextClient);
+
+				}
+				else
+				{
+					lock.setLock(-1);
+				}
+				this.backupLock(locksDirectory,lock);
+			}
+			else{
+				logger.warn("Unlock refused for "+docRequest.getUrl()+" to "+client.getId());
+				nio.send(this.getClientSocketChannel(client.getId()),"You must have lock to unlock file ! ".getBytes(),TYPE_MSG.ERROR);
+			}
+		}
+		else
+		{
+			logger.warn("Unlock refused from "+client.getId());
+			nio.send(this.getClientSocketChannel(client.getId()),"You must have lock to unlock file ! ".getBytes(),TYPE_MSG.ERROR);
+		}
+
+	}
+
 
 	private void receivedLockClient(byte[] data, SocketChannel socketChannel) {
 		Client c = nio.getClient(socketChannel);
@@ -197,24 +249,24 @@ public class Server implements I_ServerHandler,Runnable{
 				logger.info("Give Lock on "+ doc.getUrl()+" to " +"-"+c.getId());	
 			}
 			else 
-				{
-					if(lock.getLock()==c.getId()){
-						docsLockClient.put(c.getId(),doc);
-						logger.info("Already lock for this client");
-						nio.send(this.getClientSocketChannel(c.getId()),doc.getUrl().getBytes(),TYPE_MSG.ACK_LOCK);
+			{
+				if(lock.getLock()==c.getId()){
+					docsLockClient.put(c.getId(),doc);
+					logger.info("Already lock for this client");
+					nio.send(this.getClientSocketChannel(c.getId()),doc.getUrl().getBytes(),TYPE_MSG.ACK_LOCK);
+				}
+				else{
+					if(lock.getWaitLock().contains(c.getId()))
+					{
+						logger.info("Already existing waitLock for this client");
 					}
-					else{
-							if(lock.getWaitLock().contains(c.getId()))
-							{
-								logger.info("Already existing waitLock for this client");
-							}
-							else
-							{
-								lock.addWaitLock(c.getId());
-								this.backupLock(locksDirectory, lock);
-								logger.info("Wait Lock on "+ doc.getUrl() + " by Client "+c.getId());
-							}
+					else
+					{
+						lock.addWaitLock(c.getId());
+						this.backupLock(locksDirectory, lock);
+						logger.info("Wait Lock on "+ doc.getUrl() + " by Client "+c.getId());
 					}
+				}
 			}
 		}
 		else
@@ -255,30 +307,42 @@ public class Server implements I_ServerHandler,Runnable{
 	 * @param socketChannel
 	 */
 	private void receivedDeleteFile(byte[] data, SocketChannel socketChannel) {
-
-		tmp = ByteBuffer.allocate(data.length);
-		tmp.put(data);
-		tmp.rewind();
-		int urlSize= tmp.getInt(0);
-		byte[] urlb = new byte[urlSize];
-		tmp.position(4);
-		tmp.get(urlb, 0, urlSize);
-		String url = new String(urlb);
-		I_Document doc = documents.get(url);
-		if(doc != null)
+		Client client = nio.getClient(socketChannel);
+		if(docsLockClient.containsKey(client.getId()))
 		{
-			documents.remove(url);
-			nio.push(doc,TYPE_MSG.DELETE);
-			this.deleteFile(backupDirectory,url);
-			this.deleteFile(locksDirectory, url);
-			logger.info("Remove document "+doc.getUrl()+" and push clients");
+			tmp = ByteBuffer.allocate(data.length);
+			tmp.put(data);
+			tmp.rewind();
+			int urlSize= tmp.getInt(0);
+			byte[] urlb = new byte[urlSize];
+			tmp.position(4);
+			tmp.get(urlb, 0, urlSize);
+			String url = new String(urlb);
+			I_Document doc = documents.get(url);
+			LockManager lock = locks.get(doc);
+			if(client.getId() == doc.getOwner() && lock.getLock() == client.getId() )
+			{
+				if(doc != null)
+				{
+					documents.remove(url);
+					nio.push(doc,TYPE_MSG.DELETE);
+					this.deleteFile(backupDirectory,url);
+					this.deleteFile(locksDirectory, url);
+					logger.info("Remove document "+doc.getUrl()+" and push clients");
+				}
 
-		}
-		else
+			}else
+			{
+				logger.warn("Received bad remove request "+ "from "+client.getId());
+				nio.send(this.getClientSocketChannel(client.getId()),"You must have owner to delete file !".getBytes(),TYPE_MSG.ERROR);
+			}
+
+		}else
 		{
-			Client c = nio.getClient(socketChannel);
-			logger.warn("Received bad remove request "+ "from "+c.getId());
+			logger.warn("Received bad remove request "+ "from "+client.getId());
+			nio.send(this.getClientSocketChannel(client.getId()),"You must have lock and be owner to delete file ! ".getBytes(),TYPE_MSG.ERROR);
 		}
+
 
 	}
 
@@ -288,27 +352,46 @@ public class Server implements I_ServerHandler,Runnable{
 	 * @param socketChannel
 	 */
 	private void receivedDownloadClient(byte[] data, SocketChannel socketChannel) {
-		Client c = nio.getClient(socketChannel);
-		tmp = ByteBuffer.allocate(data.length);
-		tmp.put(data);
-		tmp.rewind();
-		int urlSize= tmp.getInt(0);
-		byte[] urlb = new byte[urlSize];
-		tmp.position(4);
-		tmp.get(urlb, 0, urlSize);
-		String url = new String(urlb);
-		I_Document doc = documents.get(url);
-		if(doc != null)
+		Client client = nio.getClient(socketChannel);
+		if(docsLockClient.containsKey(client.getId()))
 		{
-			byte[] docD = I_DocumentToByte(doc);
-			nio.send(socketChannel,docD,TYPE_MSG.ACK_DOWNLOAD);
-			logger.info("Send document "+doc.getUrl()+" to "+c.getId());
-		}
+			tmp = ByteBuffer.allocate(data.length);
+			tmp.put(data);
+			tmp.rewind();
+			int urlSize= tmp.getInt(0);
+			byte[] urlb = new byte[urlSize];
+			tmp.position(4);
+			tmp.get(urlb, 0, urlSize);
+			String url = new String(urlb);
+			I_Document doc = documents.get(url);
+			LockManager lock = locks.get(doc);
+			if(lock.getLock() == client.getId() )
+			{
+				if(doc != null)
+				{
+					byte[] docD = I_DocumentToByte(doc);
+					nio.send(socketChannel,docD,TYPE_MSG.ACK_DOWNLOAD);
+					logger.info("Send document "+doc.getUrl()+" to "+client.getId());
+				}
+				else
+				{
+					logger.warn("Received bad document request "+ "from "+client.getId());
+					nio.send(socketChannel,"Document not available".getBytes(),TYPE_MSG.ERROR);
+				}
+			}
+			else
+			{
+				logger.warn("Received bad document request "+ "from "+client.getId());
+				nio.send(socketChannel,"You must have lock file before download".getBytes(),TYPE_MSG.ERROR);
+			}
+		}	
 		else
 		{
-			logger.warn("Received bad document request "+ "from "+c.getId());
-			nio.send(socketChannel,"ERROR".getBytes(),TYPE_MSG.ERROR);
+			logger.warn("Received bad document request "+ "from "+client.getId());
+			nio.send(socketChannel,"You must have lock file before download".getBytes(),TYPE_MSG.ERROR);
 		}
+
+
 	} 
 
 	/**
@@ -317,8 +400,8 @@ public class Server implements I_ServerHandler,Runnable{
 	 * @param socketChannel
 	 */
 	private void receivedUploadClient(byte[] data, SocketChannel socketChannel) {
-		Client c = nio.getClient(socketChannel);
-		logger.info("Received UPLOAD form "+c.getId());
+		Client client = nio.getClient(socketChannel);
+		logger.info("Received UPLOAD form "+client.getId());
 		I_Document docReceived = bytesToI_Document(data);
 		I_Document doc = documents.get(docReceived.getUrl()); // on suppose que c'est juste un objet pour l'instant
 		if(doc == null)
@@ -333,35 +416,26 @@ public class Server implements I_ServerHandler,Runnable{
 		}
 		else
 		{
-			if(doc.getVersionNumber() <= docReceived.getVersionNumber())
+			if(docsLockClient.containsKey(client.getId()))
 			{
-				logger.info("Received : "+ docReceived.getOwner() +"-"+docReceived.getUrl()+"-"+docReceived.getVersionNumber() );
-				doc.setFile(docReceived.getFile());
-				doc.setVersionNumber(docReceived.getVersionNumber()+1);
-				documents.put(doc.getUrl(),doc);
-				LockManager lock = locks.get(doc);
-				docsLockClient.remove(c.getId());
-				int nextClient = lock.nextLock();
-				if(nextClient !=-1)
+				if(doc.getVersionNumber() <= docReceived.getVersionNumber())
 				{
-					lock.setLock(nextClient);
-					logger.info("Give lock on "+doc.getUrl()+" to "+nextClient);
-					docsLockClient.put(nextClient,doc);
-					//nio.send(this.getClientSocketChannel(nextClient),I_DocumentToByte(doc),TYPE_MSG.ACK_DOWNLOAD);
-					nio.send(this.getClientSocketChannel(nextClient),I_DocumentToByte(doc),TYPE_MSG.ACK_LOCK);
-					logger.info("Send lock for "+doc.getUrl()+" to "+nextClient);
-
+					logger.info("Received : "+ docReceived.getOwner() +"-"+docReceived.getUrl()+"-"+docReceived.getVersionNumber() );
+					doc.setFile(docReceived.getFile());
+					doc.setVersionNumber(docReceived.getVersionNumber());
+					documents.put(doc.getUrl(),doc);
+					nio.send(socketChannel,doc.getUrl().getBytes(),TYPE_MSG.ACK_UPLOAD);
+					this.backupDocument("backup",doc);
 				}
 				else
 				{
-					lock.setLock(-1);
+					logger.warn("Received old version document "+ docReceived.getUrl() +" from "+client.getId());
 				}
-				this.backupDocument("backup",doc);
-				this.backupLock(locksDirectory,lock);
 			}
 			else
 			{
-				logger.warn("Received old version document "+ docReceived.getUrl() +"from "+c.getId());
+				logger.warn("Received bad document request "+ "from "+client.getId());
+				nio.send(socketChannel,"You must have lock file before upload".getBytes(),TYPE_MSG.ERROR);
 			}
 		}
 	}
@@ -559,8 +633,8 @@ public class Server implements I_ServerHandler,Runnable{
 
 	@Override
 	public void clientDisconnected(Client client) {
-		
-		if(locks.containsKey(client.getId()));
+
+		if(docsLockClient.containsKey(client.getId()));
 		{
 			I_Document doc = docsLockClient.get(client.getId());
 			docsLockClient.remove(client.getId());

@@ -59,6 +59,16 @@ public class InterfaceClient implements I_APICache {
 					case "updatefile" :
 						cache.updateFile();
 						break;
+					case "downloadfile":
+						System.out.println("Enter File name :");
+						message = cmd.nextLine();
+						cache.downloadFile(message);
+						break;
+					case "unlockfile" :
+						System.out.println("Enter File name :");
+						message = cmd.nextLine();
+						cache.unlockFile(message);
+						break;
 					case "deletefile" :
 						System.out.println("Enter File name :");
 						message = cmd.nextLine();
