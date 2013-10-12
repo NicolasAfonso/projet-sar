@@ -32,7 +32,7 @@ public class Server implements I_ServerHandler,Runnable{
 
 	private HashMap<String,I_Document> documents ;
 	private HashMap<I_Document,LockManager> locks;
-	private HashMap<Integer, I_Document> docsClient ;
+	private HashMap<Integer, I_Document> docsLockClient ;
 	private I_NioEngine nio ;
 	private Thread nioT ;
 	private ByteBuffer tmp ;
@@ -43,7 +43,7 @@ public class Server implements I_ServerHandler,Runnable{
 	{
 		documents = new HashMap<>();
 		locks = new HashMap<>();
-		docsClient = new HashMap<>();
+		docsLockClient = new HashMap<>();
 		InetAddress addr;
 		backupDirectory = "backup";
 		locksDirectory = "lock";
@@ -191,6 +191,7 @@ public class Server implements I_ServerHandler,Runnable{
 			if(lock.getLock()==-1)
 			{
 				lock.setLock(c.getId());
+				docsLockClient.put(c.getId(),doc);
 				this.backupLock(locksDirectory, lock);
 				nio.send(this.getClientSocketChannel(c.getId()),doc.getUrl().getBytes(),TYPE_MSG.ACK_LOCK);
 				logger.info("Give Lock on "+ doc.getUrl()+" to " +"-"+c.getId());	
@@ -198,6 +199,7 @@ public class Server implements I_ServerHandler,Runnable{
 			else 
 				{
 					if(lock.getLock()==c.getId()){
+						docsLockClient.put(c.getId(),doc);
 						logger.info("Already lock for this client");
 						nio.send(this.getClientSocketChannel(c.getId()),doc.getUrl().getBytes(),TYPE_MSG.ACK_LOCK);
 					}
@@ -323,7 +325,7 @@ public class Server implements I_ServerHandler,Runnable{
 		{
 			logger.info("Create new document "+docReceived.getUrl()+" and push clients ");
 			documents.put(docReceived.getUrl(),docReceived);
-			docsClient.put(nio.getClient(socketChannel).getId(), docReceived);
+			docsLockClient.put(nio.getClient(socketChannel).getId(), docReceived);
 			locks.put(docReceived,new LockManager(docReceived.getUrl()));
 			this.backupDocument(backupDirectory,docReceived);
 			this.backupLock(locksDirectory,locks.get(docReceived));
@@ -338,13 +340,16 @@ public class Server implements I_ServerHandler,Runnable{
 				doc.setVersionNumber(docReceived.getVersionNumber()+1);
 				documents.put(doc.getUrl(),doc);
 				LockManager lock = locks.get(doc);
+				docsLockClient.remove(c.getId());
 				int nextClient = lock.nextLock();
 				if(nextClient !=-1)
 				{
 					lock.setLock(nextClient);
 					logger.info("Give lock on "+doc.getUrl()+" to "+nextClient);
-					nio.send(this.getClientSocketChannel(nextClient),I_DocumentToByte(doc),TYPE_MSG.ACK_DOWNLOAD);
-					logger.info("Send document "+doc.getUrl()+" to "+nextClient);
+					docsLockClient.put(nextClient,doc);
+					//nio.send(this.getClientSocketChannel(nextClient),I_DocumentToByte(doc),TYPE_MSG.ACK_DOWNLOAD);
+					nio.send(this.getClientSocketChannel(nextClient),I_DocumentToByte(doc),TYPE_MSG.ACK_LOCK);
+					logger.info("Send lock for "+doc.getUrl()+" to "+nextClient);
 
 				}
 				else
@@ -549,6 +554,36 @@ public class Server implements I_ServerHandler,Runnable{
 			return listFile;
 		}
 		return listFile;
+	}
+
+
+	@Override
+	public void clientDisconnected(Client client) {
+		
+		if(locks.containsKey(client.getId()));
+		{
+			I_Document doc = docsLockClient.get(client.getId());
+			docsLockClient.remove(client.getId());
+			LockManager lock = locks.get(doc);
+			if(lock != null)
+			{
+				int nextClient = lock.nextLock();
+				if(nextClient !=-1)
+				{	
+					lock.setLock(nextClient);
+					docsLockClient.put(client.getId(),doc);
+					nio.send(this.getClientSocketChannel(nextClient),lock.getUrlD().getBytes(),TYPE_MSG.ACK_LOCK);
+					logger.info("Send lock for "+lock.getUrlD()+" to "+nextClient);
+				}
+				else
+				{
+					lock.setLock(-1);
+				}
+				this.backupLock(locksDirectory,lock);
+			}
+
+
+		}
 	}
 
 }

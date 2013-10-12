@@ -193,6 +193,7 @@ public class NioEngine implements I_NioEngine{
 		SocketChannel socketChannel = (SocketChannel) key.channel();
 		BufferIn in ;
 		in = clients.get(socketChannel).getBuffin();
+		Client c = clients.get(socketChannel);
 		TYPE_MSG type = null;
 		int numRead;
 		try{
@@ -211,7 +212,12 @@ public class NioEngine implements I_NioEngine{
 						socketChannel_Client.close();
 						handlerClient.serverNotAvailable();
 					}
-					logger.warn("Client deleted READ SIZE ERROR");
+					else
+					{	
+						handlerServer.clientDisconnected(c);
+						logger.warn("Client "+c.getId() +" is deconnected");
+					}
+
 					//System.out.println("STYPE_MSG type = null;IZE numRead = -1 , delete key and close channel");
 					return;
 				}

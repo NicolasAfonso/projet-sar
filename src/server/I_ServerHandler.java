@@ -2,6 +2,7 @@ package server;
 
 import java.nio.channels.SocketChannel;
 
+import engine.Client;
 import engine.TYPE_MSG;
 
 public interface I_ServerHandler {
@@ -13,4 +14,6 @@ public interface I_ServerHandler {
 	 * @param socketChannel
 	 */
 	public void receivedMSG(byte[] data, TYPE_MSG type,SocketChannel socketChannel);
+
+	public void clientDisconnected(Client client);
 }
