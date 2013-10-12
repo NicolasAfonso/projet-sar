@@ -202,8 +202,29 @@ public class Server implements I_ServerHandler,Runnable{
 					lock.setLock(nextClient);
 					logger.info("Give lock on "+docRequest.getUrl()+" to "+nextClient);
 					docsLockClient.put(nextClient,docRequest);
-					nio.send(this.getClientSocketChannel(nextClient),I_DocumentToByte(docRequest),TYPE_MSG.ACK_LOCK);
-					logger.info("Send lock for "+docRequest.getUrl()+" to "+nextClient);
+					SocketChannel socketChannelClient = this.getClientSocketChannel(nextClient);
+					while(socketChannelClient == null && nextClient !=-1)
+					{
+						logger.info("Can not give lock on "+docRequest.getUrl()+" to "+nextClient +" because the client "+nextClient+" is not available");
+						docsLockClient.remove(nextClient);
+						nextClient = lock.nextLock();
+						lock.setLock(nextClient);
+						logger.info("Give lock on "+docRequest.getUrl()+" to "+nextClient);
+						socketChannelClient = this.getClientSocketChannel(nextClient);
+						docsLockClient.put(nextClient,docRequest);
+					}
+					
+					if(socketChannelClient !=null)
+					{
+						nio.send(this.getClientSocketChannel(nextClient),docRequest.getUrl().getBytes(),TYPE_MSG.ACK_LOCK);
+						logger.info("Send lock for "+docRequest.getUrl()+" to "+nextClient);
+					}
+					else
+					{
+						lock.setLock(-1);
+						logger.info("No client available, set lock to -1");
+					}
+
 
 				}
 				else
@@ -214,6 +235,7 @@ public class Server implements I_ServerHandler,Runnable{
 			}
 			else{
 				logger.warn("Unlock refused for "+docRequest.getUrl()+" to "+client.getId());
+				
 				nio.send(this.getClientSocketChannel(client.getId()),"You must have lock to unlock file ! ".getBytes(),TYPE_MSG.ERROR);
 			}
 		}
@@ -246,7 +268,7 @@ public class Server implements I_ServerHandler,Runnable{
 				docsLockClient.put(c.getId(),doc);
 				this.backupLock(locksDirectory, lock);
 				nio.send(this.getClientSocketChannel(c.getId()),doc.getUrl().getBytes(),TYPE_MSG.ACK_LOCK);
-				logger.info("Give Lock on "+ doc.getUrl()+" to " +"-"+c.getId());	
+				logger.info("Give Lock on "+ doc.getUrl()+" to " +c.getId());	
 			}
 			else 
 			{
@@ -629,7 +651,14 @@ public class Server implements I_ServerHandler,Runnable{
 		}
 		return listFile;
 	}
-
+	
+	private byte[] formatTexttoSend(String text)
+	{
+		ByteBuffer buf = ByteBuffer.allocate(text.length()+4);
+		buf.putInt(text.length());
+		buf.put(text.getBytes());
+		return buf.array(); 
+	}
 
 	@Override
 	public void clientDisconnected(Client client) {
@@ -643,11 +672,34 @@ public class Server implements I_ServerHandler,Runnable{
 			{
 				int nextClient = lock.nextLock();
 				if(nextClient !=-1)
-				{	
+				{
 					lock.setLock(nextClient);
-					docsLockClient.put(client.getId(),doc);
-					nio.send(this.getClientSocketChannel(nextClient),lock.getUrlD().getBytes(),TYPE_MSG.ACK_LOCK);
-					logger.info("Send lock for "+lock.getUrlD()+" to "+nextClient);
+					logger.info("Give lock on "+doc.getUrl()+" to "+nextClient);
+					docsLockClient.put(nextClient,doc);
+					SocketChannel socketChannelClient = this.getClientSocketChannel(nextClient);
+					while(socketChannelClient == null && nextClient !=-1)
+					{
+						logger.info("Can not give lock on "+doc.getUrl()+" to "+nextClient +" because the client "+nextClient+" is not available");
+						docsLockClient.remove(nextClient);
+						nextClient = lock.nextLock();
+						lock.setLock(nextClient);
+						logger.info("Give lock on "+doc.getUrl()+" to "+nextClient);
+						socketChannelClient = this.getClientSocketChannel(nextClient);
+						docsLockClient.put(nextClient,doc);
+					}
+					
+					if(socketChannelClient !=null)
+					{
+						nio.send(this.getClientSocketChannel(nextClient),doc.getUrl().getBytes(),TYPE_MSG.ACK_LOCK);
+						logger.info("Send lock for "+doc.getUrl()+" to "+nextClient);
+					}
+					else
+					{
+						lock.setLock(-1);
+						logger.info("No client available, set lock to -1");
+					}
+
+
 				}
 				else
 				{

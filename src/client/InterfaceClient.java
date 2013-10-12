@@ -74,6 +74,10 @@ public class InterfaceClient implements I_APICache {
 						message = cmd.nextLine();
 						cache.deleteFile(message);
 						break;
+					case "exit":
+						System.out.println("Bye");
+						System.exit(0);
+						break;
 					}
 //				}
 //				else

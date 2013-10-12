@@ -137,14 +137,16 @@ public class Cache implements I_CacheHandler{
 	}
 
 	private void reveivedACKLockServer(byte[] data) {
-		//		tmp = ByteBuffer.allocate(data.length);
-		//		tmp.put(data);
-		//		tmp.rewind();
-		//		byte[] urlb = new byte[data.length];
-		//		tmp.get(urlb,0,data.length);
-		//		tmp = ByteBuffer.allocate(urlb.length+4);
-		//		tmp.putInt(urlb.length);
-		//		tmp.put(urlb);
+//			tmp = ByteBuffer.allocate(data.length);
+//			tmp.put(data);
+//			tmp.rewind();
+			//int versionClient = tmp.getInt(0);
+	
+			//int urlSize = tmp.getInt(4);
+//			byte[] urlb = new byte[urlSize];
+//			tmp.position(8);
+//			tmp.get(urlb, 0, urlSize);
+				
 		//		nio.send(tmp.array(),TYPE_MSG.DOWNLOAD);
 		logger.info("Received Lock on "+ new String(data));
 
@@ -334,6 +336,8 @@ public class Cache implements I_CacheHandler{
 			docTab.putInt(url.length());
 			docTab.put(url.getBytes());
 			nio.send(docTab.array(),TYPE_MSG.UNLOCK);
+
+
 	}
 	/**
 	 * @param cache the cache to set
