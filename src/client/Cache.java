@@ -123,11 +123,13 @@ public class Cache implements I_CacheHandler{
 
 	private void reveivedACKUnlockServer(byte[] data) {
 		logger.info("File unlocked : "+new String(data));
+		handlerAPI.handlerUnlockFile();
 		
 	}
 
 	private void receivedUploadServer(byte[] data) {
 		logger.info("File updated : "+new String(data));
+		handlerAPI.handlerUpdateFile(true);
 
 	}
 
@@ -137,19 +139,9 @@ public class Cache implements I_CacheHandler{
 	}
 
 	private void reveivedACKLockServer(byte[] data) {
-//			tmp = ByteBuffer.allocate(data.length);
-//			tmp.put(data);
-//			tmp.rewind();
-			//int versionClient = tmp.getInt(0);
-	
-			//int urlSize = tmp.getInt(4);
-//			byte[] urlb = new byte[urlSize];
-//			tmp.position(8);
-//			tmp.get(urlb, 0, urlSize);
-				
-		//		nio.send(tmp.array(),TYPE_MSG.DOWNLOAD);
 		logger.info("Received Lock on "+ new String(data));
-
+		handlerAPI.handlerLockFile(true);
+		
 
 	}
 
@@ -253,6 +245,7 @@ public class Cache implements I_CacheHandler{
 		I_Document doc = bytesToI_Document(data);
 		tmpD = doc ;
 		logger.info("Received ACK_DOWNLOAD :"+ doc.getUrl() +"-Version  "+doc.getVersionNumber());
+		handlerAPI.handlerReceivedFile();
 		//TODO : Add to list current file		
 
 	}
@@ -301,12 +294,8 @@ public class Cache implements I_CacheHandler{
 			docTab.putInt(url.length());
 			docTab.put(url.getBytes());
 			nio.send(docTab.array(),TYPE_MSG.LOCK);
-			handlerAPI.handlerLockFile(true);
 		}
-		else
-		{
-			handlerAPI.handlerLockFile(false);
-		}
+
 	}
 
 	public void updateFile(){
@@ -315,12 +304,8 @@ public class Cache implements I_CacheHandler{
 			tmpD.setVersionNumber(tmpD.getVersionNumber()+1);
 			byte[] docU = I_DocumentToByte(tmpD);
 			nio.send(docU, TYPE_MSG.UPLOAD);
-			handlerAPI.handlerUpdateFile(true);
 		}
-		else
-		{
-			handlerAPI.handlerUpdateFile(false);
-		}
+
 	}
 
 	public void downloadFile(String message) {
@@ -428,6 +413,11 @@ public class Cache implements I_CacheHandler{
 		tmp.putInt(id);
 		nio.send(tmp.array(), TYPE_MSG.HELLO_CLIENT);
 		nio.mainloop();
+	}
+
+	public I_Document getCurrentFile() {
+		return tmpD;
+		
 	}
 
 

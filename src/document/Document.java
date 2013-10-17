@@ -24,6 +24,7 @@ public class Document implements I_Document,Serializable {
 		versionNumber = 0 ;
 		currentVersion = this; 
 		savedVersion = null ;
+		file = null; 
 		
 	}
 	

@@ -173,5 +173,17 @@ public class InterfaceClient implements I_APICache {
 		serverAvailable = state;
 	}
 
+	@Override
+	public void handlerReceivedFile() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void handlerUnlockFile() {
+		// TODO Auto-generated method stub
+		
+	}
+
 
 }

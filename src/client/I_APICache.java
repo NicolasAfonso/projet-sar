@@ -18,4 +18,8 @@ public interface I_APICache {
 	public void handlerUpdateFile(boolean state);
 	
 	public void handlerServerAvailable(boolean state);
+
+	public void handlerReceivedFile();
+
+	public void handlerUnlockFile();
 }
