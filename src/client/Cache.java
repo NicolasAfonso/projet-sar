@@ -171,7 +171,7 @@ public class Cache implements I_CacheHandler{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-
+		handlerAPI.handlerListFile(urls);
 	}
 
 	/**
@@ -214,6 +214,7 @@ public class Cache implements I_CacheHandler{
 		String url = new String(urlb);
 		logger.info("Received PUSH_NEW_FILE :"+ url +"-Version  "+versionClient);
 		urls.add(url);
+		handlerAPI.handlerListFile(urls);
 	}
 
 	/**
@@ -258,12 +259,8 @@ public class Cache implements I_CacheHandler{
 		{
 			byte[] docUpload = I_DocumentToByte(doc);
 			nio.send(docUpload,TYPE_MSG.UPLOAD);
-			handlerAPI.handlerAddFile(true);
 		}
-		else
-		{
-			handlerAPI.handlerAddFile(false);
-		}
+
 	}
 
 	/**
