@@ -1,5 +1,6 @@
 package client;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
 import java.util.logging.Logger;
@@ -9,24 +10,32 @@ import document.TestDocument;
 
 public class clientTest implements I_APICache {
 	
+	private String currentFile = null;
+	private boolean first = true;
 	private Cache cache;
 	private static int id ;
-	List<String> filesAvailable ; 
+	LinkedList<String> filesAvailable ; 
 
 	public clientTest(String[] args){
 		cache = new Cache(args,this);
 		setId(Integer.parseInt(args[0]));
+		filesAvailable = new LinkedList<String>();
 	}
 	@Override
 	public void handlerAddFile(boolean state) {
-		// TODO Auto-generated method stub
+		currentFile = filesAvailable.getFirst();
+		filesAvailable.removeFirst();
+		filesAvailable.addLast(currentFile);
+		cache.lockFile(currentFile);
 		
 	}
 	
 	@Override
 	public void handlerUnlockFile() {
-		cache.lockFile("TutuTest");
-		
+		currentFile = filesAvailable.getFirst();
+		filesAvailable.removeFirst();
+		filesAvailable.addLast(currentFile);
+		cache.lockFile(currentFile);	
 	}
 	
 	@Override
@@ -37,12 +46,37 @@ public class clientTest implements I_APICache {
 
 	@Override
 	public void handlerListFile(List<String> urlsAvailable) {
-		filesAvailable = urlsAvailable;
+		List<String> urls = urlsAvailable;
+		for (String url : urls) {
+			if(!filesAvailable.contains(url)){
+				filesAvailable.addLast(url);
+			}
+		}
+		
+		if(first)
+		{
+			if(!filesAvailable.contains("TutuTest"+id))
+			{
+				TestDocument d = new TestDocument("TutuTest"+id, id);
+				d.setFile(new String("VIDE").getBytes());
+				cache.addFile(d);
+				first = false;
+			}
+			
+			if(!filesAvailable.isEmpty() && filesAvailable.contains("TutuTest"+id) )
+				{
+				currentFile = filesAvailable.getFirst();
+				filesAvailable.removeFirst();
+				filesAvailable.addLast(currentFile);
+				cache.lockFile(currentFile);
+				}
+
+		}
 	}
 
 	@Override
 	public void handlerLockFile(boolean state) {
-		cache.downloadFile("TutuTest");
+		cache.downloadFile(currentFile);
 		
 	}
 	
@@ -62,7 +96,7 @@ public class clientTest implements I_APICache {
 	
 	@Override
 	public void handlerUpdateFile(boolean state) {
-		cache.unlockFile("TutuTest");
+		cache.unlockFile(currentFile);
 		
 	}
 
@@ -73,13 +107,8 @@ public class clientTest implements I_APICache {
 	}
 	
 	public void start(){
-		cache.listFile();
-		while(filesAvailable.size()<1){
-			cache.listFile();
-		}
-//		cache.unlockFile(filesAvailable.get(0));
-//		TestDocument d = new TestDocument("TutuTest", id);
-		cache.lockFile("TutuTest");
+		//cache.listFile();
+
 	}
 	public static void main(String[] args) {
 

@@ -287,7 +287,14 @@ public class NioEngine implements I_NioEngine{
 
 		}catch(Exception e){
 			logger.error("Reading Error : " , e);
-			//En cas d'erreur , on reinitialise le canal
+			if(socketChannel_Client != null)
+			{
+				handlerClient.serverNotAvailable();
+			}
+			else
+			{
+				handlerServer.clientDisconnected(c);
+			}
 			try {
 				socketChannel.close();
 			} catch (IOException e1) {
