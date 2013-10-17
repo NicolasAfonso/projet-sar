@@ -44,7 +44,7 @@ public class InterfaceClient implements I_APICache {
 					case "listfile" :
 						cache.listFile();
 						break ;
-					case "addFile" :
+					case "addfile" :
 						System.out.println("Enter File name :");
 						message = cmd.nextLine();
 						I_Document doc = new Document(message, id);
@@ -74,10 +74,23 @@ public class InterfaceClient implements I_APICache {
 						message = cmd.nextLine();
 						cache.deleteFile(message);
 						break;
+					case "?" :
+					case "help" :
+						System.out.println("Available commands :");
+						System.out.println("- [listfile] give you the list of the available files on server");
+						System.out.println("- [addfile] for adding an existing local file on server");
+						System.out.println("- [lockfile] request a lock on a server file in order to read or modify it");
+						System.out.println("- [updatefile] push your local file to the server");
+						System.out.println("- [downloadfile] request the distant file to be downloaded into your cache. You must obtain the lock on this file before (if not an error is thrown).");
+						System.out.println("- [unlockfile] indicate to the server you finished to work with the file");
+						System.out.println("- [deletefile] request the distant file to be deleted");
+						break;
 					case "exit":
 						System.out.println("Bye");
 						System.exit(0);
 						break;
+					default:
+						System.out.println("Your command is not recognised by the system. Type '?' or 'help' for displaying the command list.");
 					}
 //				}
 //				else
@@ -106,14 +119,19 @@ public class InterfaceClient implements I_APICache {
 
 	@Override
 	public void handlerListFile(List<String> urlsAvailable) {
-
-		if(urlsAvailable.size()==0)
+		int size = urlsAvailable.size();
+		if(size ==0)
 		{
 			System.out.println("No File available");
 		}
 		else
 		{
-			System.out.println("File List :");
+			if (size == 1) 
+				System.out.println("One file is available on server :");
+			 else {
+				 System.out.println(size+" files are available on server :");
+			}
+			
 			for (String url : urlsAvailable) {
 				System.out.println(url);
 			}

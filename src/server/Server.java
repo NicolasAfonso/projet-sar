@@ -37,17 +37,27 @@ public class Server implements I_ServerHandler,Runnable{
 	private Thread nioT ;
 	private ByteBuffer tmp ;
 	private static final Logger logger = Logger.getLogger(NioEngine.class);
-	private String backupDirectory ;
-	private String locksDirectory;
+	private File backupDirectory ;
+	private File locksDirectory;
 	public Server(String[] args)
 	{
 		documents = new HashMap<>();
 		locks = new HashMap<>();
 		docsLockClient = new HashMap<>();
 		InetAddress addr;
-		backupDirectory = "backup";
-		locksDirectory = "lock";
+		backupDirectory = new File("backup");
+		locksDirectory = new File ("lock");
+		
 		try {
+			
+			if (! backupDirectory.exists()) {
+				backupDirectory.mkdir();
+				logger.info(backupDirectory.getName()+" directory has been created on server.");
+			}
+			if (! locksDirectory.exists()){
+				locksDirectory.mkdir();
+				logger.info(locksDirectory.getName()+" directory has been created on server.");
+			}
 			addr = InetAddress.getByName("localhost");
 			nio= new NioEngine();
 			int port = Integer.parseInt(args[0]);
@@ -59,6 +69,7 @@ public class Server implements I_ServerHandler,Runnable{
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+			
 		}  
 	}
 
@@ -447,7 +458,7 @@ public class Server implements I_ServerHandler,Runnable{
 					doc.setVersionNumber(docReceived.getVersionNumber());
 					documents.put(doc.getUrl(),doc);
 					nio.send(socketChannel,doc.getUrl().getBytes(),TYPE_MSG.ACK_UPLOAD);
-					this.backupDocument("backup",doc);
+					this.backupDocument(new File("backup"),doc);
 				}
 				else
 				{
@@ -542,11 +553,11 @@ public class Server implements I_ServerHandler,Runnable{
 		return null;
 	}
 
-	private void backupDocument(String dir,I_Document doc)
+	private void backupDocument(File dir,I_Document doc)
 	{
 		FileOutputStream fichier;
 		try {
-			fichier = new FileOutputStream(dir+"/"+doc.getUrl());
+			fichier = new FileOutputStream(dir.getName()+"/"+doc.getUrl());
 			ObjectOutputStream oos = new ObjectOutputStream(fichier);
 			oos.writeObject(doc);
 			oos.close();
@@ -561,11 +572,11 @@ public class Server implements I_ServerHandler,Runnable{
 
 	}
 
-	private I_Document restoreDocument(String dir,String backupName)
+	private I_Document restoreDocument(File dir,String backupName)
 	{
 		ObjectInputStream ois;
 		try {
-			ois = new ObjectInputStream(new FileInputStream(dir+"/"+backupName));
+			ois = new ObjectInputStream(new FileInputStream(dir.getName()+"/"+backupName));
 			Object o = ois.readObject();
 			ois.close();
 			if(o instanceof Document)
@@ -591,10 +602,10 @@ public class Server implements I_ServerHandler,Runnable{
 		return null;
 	}
 
-	private void backupLock(String locksDirectory, LockManager lockManager) {
+	private void backupLock(File locksDirectory, LockManager lockManager) {
 		FileOutputStream fichier;
 		try {
-			fichier = new FileOutputStream(locksDirectory+"/"+lockManager.getUrlD());
+			fichier = new FileOutputStream(locksDirectory.getName()+"/"+lockManager.getUrlD());
 			ObjectOutputStream oos = new ObjectOutputStream(fichier);
 			oos.writeObject(lockManager);
 			oos.close();
@@ -609,10 +620,10 @@ public class Server implements I_ServerHandler,Runnable{
 
 	}
 
-	private LockManager restoreLock(String locksDirectory, String nameFic) {
+	private LockManager restoreLock(File locksDirectory, String nameFic) {
 		ObjectInputStream ois;
 		try {
-			ois = new ObjectInputStream(new FileInputStream(locksDirectory+"/"+nameFic));
+			ois = new ObjectInputStream(new FileInputStream(locksDirectory.getName()+"/"+nameFic));
 			Object o = ois.readObject();
 			ois.close();
 			if(o instanceof LockManager)
@@ -632,14 +643,14 @@ public class Server implements I_ServerHandler,Runnable{
 		return null;
 	}
 
-	private void deleteFile(String dir,String file){
-		File f = new File(dir+"/"+file);
+	private void deleteFile(File dir,String file){
+		File f = new File(dir.getName()+"/"+file);
 		f.delete();
 	}
 
-	private List<String> listDirectory(String dir) {
-		File file = new File(dir);
-		File[] files = file.listFiles();
+	private List<String> listDirectory(File backupDirectory) {
+		//File file = new File(backupDirectory2);
+		File[] files = backupDirectory.listFiles();
 		List<String> listFile = new ArrayList<String>();
 		if (files != null) {
 			for (int i = 0; i < files.length; i++) {
