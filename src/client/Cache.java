@@ -59,15 +59,24 @@ public class Cache implements I_CacheHandler{
 
 	public void init(){
 		try {
-			// Connection			
-			nio.initializeAsClient(addrServer,serverPort,this);
+			if(serverPort < 1024)
+			{
+				logger.error("Can't used a reserved port");
+			    System.exit(0);
+			}
+			else
+			{
+				// Connection			
+				nio.initializeAsClient(addrServer,serverPort,this);
 
-			// send client id to server
-			tmp = ByteBuffer.allocate(4);
-			tmp.putInt(id);
-			nio.send(tmp.array(), TYPE_MSG.HELLO_CLIENT);
-			nioT.start();
-			handlerAPI.handlerServerAvailable(true);
+				// send client id to server
+				tmp = ByteBuffer.allocate(4);
+				tmp.putInt(id);
+				nio.send(tmp.array(), TYPE_MSG.HELLO_CLIENT);
+				nioT.start();
+				handlerAPI.handlerServerAvailable(true);
+			}
+
 
 		} catch (UnknownHostException e) {
 			e.printStackTrace();

@@ -39,17 +39,25 @@ public class Server implements I_ServerHandler,Runnable{
 	private static final Logger logger = Logger.getLogger(NioEngine.class);
 	private File backupDirectory ;
 	private File locksDirectory;
+	private InetAddress addrServer ;
+	private int portServer;
 	public Server(String[] args)
 	{
 		documents = new HashMap<>();
 		locks = new HashMap<>();
 		docsLockClient = new HashMap<>();
-		InetAddress addr;
+
 		backupDirectory = new File("backup");
 		locksDirectory = new File ("lock");
 		
 		try {
-			
+			addrServer = InetAddress.getByName("localhost");
+			portServer = Integer.parseInt(args[0]);
+			if(portServer < 8888)
+			{
+				logger.error("We can't used reserved port");
+				System.exit(0);
+			}
 			if (! backupDirectory.exists()) {
 				backupDirectory.mkdir();
 				logger.info(backupDirectory.getName()+" directory has been created on server.");
@@ -58,11 +66,9 @@ public class Server implements I_ServerHandler,Runnable{
 				locksDirectory.mkdir();
 				logger.info(locksDirectory.getName()+" directory has been created on server.");
 			}
-			addr = InetAddress.getByName("localhost");
-			nio= new NioEngine();
-			int port = Integer.parseInt(args[0]);
-			nio.initializeAsServer(addr, port, this);
-			init(addr,port);
+
+		
+
 		} catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -112,8 +118,15 @@ public class Server implements I_ServerHandler,Runnable{
 		System.exit(0);
 
 	}
-	private void init(InetAddress addr,int port)
+	private void init()
 	{
+		nio= new NioEngine();
+		try {
+			nio.initializeAsServer(addrServer, portServer, this);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		/*
 		 * Restore document
 		 */
@@ -140,7 +153,7 @@ public class Server implements I_ServerHandler,Runnable{
 		}
 		nioT = new Thread(nio);
 		nioT.start();
-		logger.info("Server start on  "+addr.toString()+":"+port);
+		logger.info("Server start on  "+addrServer.toString()+":"+portServer);
 	}
 
 
@@ -148,6 +161,7 @@ public class Server implements I_ServerHandler,Runnable{
 	public static void main(String[] args) {
 		try {
 			Server s =new Server(args);
+			s.init();
 			s.run();
 		} catch (Exception e) {
 			e.printStackTrace();
