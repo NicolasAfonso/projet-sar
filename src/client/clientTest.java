@@ -2,10 +2,7 @@ package client;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Scanner;
-import java.util.logging.Logger;
 
-import document.I_Document;
 import document.TestDocument;
 
 public class clientTest implements I_APICache {

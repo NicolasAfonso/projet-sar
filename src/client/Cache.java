@@ -214,7 +214,7 @@ public class Cache implements I_CacheHandler{
 		String url = new String(urlb);
 		logger.info("Received PUSH_NEW_FILE :"+ url +"-Version  "+versionClient);
 		urls.add(url);
-		handlerAPI.handlerListFile(urls);
+		handlerAPI.handlerAddFile(true);
 	}
 
 	/**
