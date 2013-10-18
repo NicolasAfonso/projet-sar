@@ -286,7 +286,7 @@ public class NioEngine implements I_NioEngine{
 			}
 
 		}catch(Exception e){
-			logger.error("Reading Error : " , e);
+//			logger.error("Reading Error : " , e);
 			if(socketChannel_Client != null)
 			{
 				handlerClient.serverNotAvailable();
@@ -338,8 +338,7 @@ public class NioEngine implements I_NioEngine{
 				send(socketChannel_Client,data,type);
 			}
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			logger.error("Error send",e);
+			handlerClient.serverNotAvailable();
 		}
 	}
 
