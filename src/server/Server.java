@@ -41,6 +41,7 @@ public class Server implements I_ServerHandler,Runnable{
 	private File locksDirectory;
 	private InetAddress addrServer ;
 	private int portServer;
+	private Scanner cmd;
 	public Server(String[] args)
 	{
 		documents = new HashMap<>();
@@ -49,7 +50,7 @@ public class Server implements I_ServerHandler,Runnable{
 
 		backupDirectory = new File("backup");
 		locksDirectory = new File ("lock");
-		
+
 		try {
 			addrServer = InetAddress.getByName("localhost");
 			portServer = Integer.parseInt(args[0]);
@@ -67,22 +68,16 @@ public class Server implements I_ServerHandler,Runnable{
 				logger.info(locksDirectory.getName()+" directory has been created on server.");
 			}
 
-		
-
 		} catch (UnknownHostException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			
+			logger.error(" Unknown Host");
+			System.exit(0);
 		}  
 	}
 
 
 	@Override
 	public void run() {
-		Scanner cmd = new Scanner(System.in);
+		cmd = new Scanner(System.in);
 		String message ;
 		boolean running = true;
 		while(running) {
@@ -124,8 +119,8 @@ public class Server implements I_ServerHandler,Runnable{
 		try {
 			nio.initializeAsServer(addrServer, portServer, this);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error(" Error to initialize Server");
+			System.exit(0);
 		}
 		/*
 		 * Restore document
@@ -145,10 +140,21 @@ public class Server implements I_ServerHandler,Runnable{
 		listFic = listDirectory(locksDirectory);
 		for(String nameFic: listFic)
 		{
+
 			LockManager lockRestore = this.restoreLock(locksDirectory,nameFic);
-			logger.info("Restore lock on "+lockRestore.getUrlD());
-			locks.put(documents.get(lockRestore.getUrlD()),lockRestore);
-			//docsClient.put(nio.getClient(socketChannel).getId(), docReceived);				
+			if(lockRestore == null)
+			{
+				logger.error("Erase the last lock beacause is corrupted");
+				locks.put(documents.get(nameFic),new LockManager(documents.get(nameFic).getUrl()));
+				this.backupLock(locksDirectory,locks.get(documents.get(nameFic)));
+			}else
+			{
+				lockRestore.getWaitLock().clear();
+				logger.info("Restore lock on "+lockRestore.getUrlD());
+				locks.put(documents.get(lockRestore.getUrlD()),lockRestore);
+				//docsClient.put(nio.getClient(socketChannel).getId(), docReceived);	
+			}
+			
 
 		}
 		nioT = new Thread(nio);
@@ -197,6 +203,7 @@ public class Server implements I_ServerHandler,Runnable{
 			break;
 
 		default :
+			break;
 
 		}
 
@@ -238,7 +245,7 @@ public class Server implements I_ServerHandler,Runnable{
 						socketChannelClient = this.getClientSocketChannel(nextClient);
 						docsLockClient.put(nextClient,docRequest);
 					}
-					
+
 					if(socketChannelClient !=null)
 					{
 						nio.send(this.getClientSocketChannel(nextClient),docRequest.getUrl().getBytes(),TYPE_MSG.ACK_LOCK);
@@ -260,7 +267,7 @@ public class Server implements I_ServerHandler,Runnable{
 			}
 			else{
 				logger.warn("Unlock refused for "+docRequest.getUrl()+" to "+client.getId());
-				
+
 				nio.send(this.getClientSocketChannel(client.getId()),"You must have lock to unlock file ! ".getBytes(),TYPE_MSG.ERROR);
 			}
 		}
@@ -306,12 +313,14 @@ public class Server implements I_ServerHandler,Runnable{
 					if(lock.getWaitLock().contains(c.getId()))
 					{
 						logger.info("Already existing waitLock for this client");
+						checkLockClient(lock,doc);
 					}
 					else
 					{
 						lock.addWaitLock(c.getId());
 						this.backupLock(locksDirectory, lock);
 						logger.info("Wait Lock on "+ doc.getUrl() + " by Client "+c.getId());
+						checkLockClient(lock,doc);
 					}
 				}
 			}
@@ -322,6 +331,9 @@ public class Server implements I_ServerHandler,Runnable{
 		}
 
 	}
+
+
+	
 
 
 	private void reveivedListFile(byte[] data, SocketChannel socketChannel) {
@@ -343,8 +355,8 @@ public class Server implements I_ServerHandler,Runnable{
 			nio.send(socketChannel,docs,TYPE_MSG.ACK_LIST_FILE);
 
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error("Error received List File");
+			System.exit(0);
 		}	
 	}
 
@@ -536,11 +548,9 @@ public class Server implements I_ServerHandler,Runnable{
 			in.close();
 			return doc;
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error("Error to translate Bytes in I_Document");
 		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error("Error to translate Bytes in I_Document");
 		}
 		return null;
 	}
@@ -561,8 +571,7 @@ public class Server implements I_ServerHandler,Runnable{
 			bos.close();
 			return bytes;
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error("Error to translate I_Document in Bytes");
 		}
 		return null;
 	}
@@ -647,12 +656,12 @@ public class Server implements I_ServerHandler,Runnable{
 				return lock;
 			}
 		} catch (FileNotFoundException e) {
-			logger.error("Error restore",e);
+			logger.error("Error restore",e.getCause());
 		} catch (IOException e) {
-			logger.error("Error restore",e);
+			logger.error("Error restore",e.getCause());
 
 		} catch (ClassNotFoundException e) {
-			logger.error("Error restore",e);
+			logger.error("Error restore",e.getCause());
 		}
 		return null;
 	}
@@ -677,14 +686,49 @@ public class Server implements I_ServerHandler,Runnable{
 		return listFile;
 	}
 	
-	private byte[] formatTexttoSend(String text)
-	{
-		ByteBuffer buf = ByteBuffer.allocate(text.length()+4);
-		buf.putInt(text.length());
-		buf.put(text.getBytes());
-		return buf.array(); 
-	}
+	private void checkLockClient(LockManager lock, I_Document docRequest) {
 
+		int client = lock.getLock();
+		SocketChannel socketChannelClient = this.getClientSocketChannel(client);
+
+		if(socketChannelClient == null)
+		{
+			int nextClient = lock.nextLock();
+			if(nextClient !=-1)
+			{
+				lock.setLock(nextClient);
+				logger.info("Give lock on "+docRequest.getUrl()+" to "+nextClient);
+				docsLockClient.put(nextClient,docRequest);
+				socketChannelClient = this.getClientSocketChannel(nextClient);
+				while(socketChannelClient == null && nextClient !=-1)
+				{
+					logger.info("Can not give lock on "+docRequest.getUrl()+" to "+nextClient +" because the client "+nextClient+" is not available");
+					docsLockClient.remove(nextClient);
+					nextClient = lock.nextLock();
+					lock.setLock(nextClient);
+					logger.info("Give lock on "+docRequest.getUrl()+" to "+nextClient);
+					socketChannelClient = this.getClientSocketChannel(nextClient);
+					docsLockClient.put(nextClient,docRequest);
+				}
+
+				if(socketChannelClient !=null)
+				{
+					nio.send(this.getClientSocketChannel(nextClient),docRequest.getUrl().getBytes(),TYPE_MSG.ACK_LOCK);
+					logger.info("Send lock for "+docRequest.getUrl()+" to "+nextClient);
+				}
+				else
+				{
+					lock.setLock(-1);
+					logger.info("No client available, set lock to -1");
+				}
+
+
+			}
+		}
+
+
+	}
+	
 	@Override
 	public void clientDisconnected(Client client) {
 
@@ -712,7 +756,7 @@ public class Server implements I_ServerHandler,Runnable{
 						socketChannelClient = this.getClientSocketChannel(nextClient);
 						docsLockClient.put(nextClient,doc);
 					}
-					
+
 					if(socketChannelClient !=null)
 					{
 						nio.send(this.getClientSocketChannel(nextClient),doc.getUrl().getBytes(),TYPE_MSG.ACK_LOCK);

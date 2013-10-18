@@ -19,12 +19,28 @@ public class clientTest implements I_APICache {
 		filesAvailable = new LinkedList<String>();
 	}
 	@Override
-	public void handlerAddFile(boolean state) {
+	public void handlerAddFile() {
 		currentFile = filesAvailable.getFirst();
 		filesAvailable.removeFirst();
 		filesAvailable.addLast(currentFile);
 		cache.lockFile(currentFile);
 		
+	}
+	
+	@Override
+	public void handlerPushNewFile() {
+
+		if(filesAvailable.isEmpty())
+		{
+			first = true;
+			cache.listFile();
+		}
+		else{
+			currentFile = filesAvailable.getFirst();
+			filesAvailable.removeFirst();
+			filesAvailable.addLast(currentFile);
+			cache.lockFile(currentFile);
+		}
 	}
 	
 	@Override
@@ -36,7 +52,7 @@ public class clientTest implements I_APICache {
 	}
 	
 	@Override
-	public void handlerDeleteFile(boolean state) {
+	public void handlerDeleteFile() {
 		// TODO Auto-generated method stub
 		
 	}
@@ -72,7 +88,7 @@ public class clientTest implements I_APICache {
 	}
 
 	@Override
-	public void handlerLockFile(boolean state) {
+	public void handlerLockFile() {
 		cache.downloadFile(currentFile);
 		
 	}
@@ -92,14 +108,27 @@ public class clientTest implements I_APICache {
 	}
 	
 	@Override
-	public void handlerUpdateFile(boolean state) {
+	public void handlerUpdateFile() {
 		cache.unlockFile(currentFile);
 		
 	}
 
 	@Override
-	public void handlerServerAvailable(boolean state) {
-		// TODO Auto-generated method stub
+	public void handlerServerAvailable() {
+		if(cache.getCurrentFile() != null)
+		{
+			cache.lockFile(currentFile);
+		}else
+		{
+			if(!filesAvailable.isEmpty())
+				{
+				currentFile = filesAvailable.getFirst();
+				filesAvailable.removeFirst();
+				filesAvailable.addLast(currentFile);
+				cache.lockFile(currentFile);
+				}
+
+		}
 		
 	}
 	
@@ -128,6 +157,7 @@ public class clientTest implements I_APICache {
 	public static void setId(int id) {
 		clientTest.id = id;
 	}
+
 
 
 }

@@ -10,7 +10,6 @@ public class InterfaceClient implements I_APICache {
 	private Cache cache;
 	private static int id ;
 	private static Scanner cmd; 
-	private boolean serverAvailable;
 	public InterfaceClient(String[] args){
 		cache = new Cache(args,this);
 		setId(Integer.parseInt(args[0])) ;
@@ -27,77 +26,69 @@ public class InterfaceClient implements I_APICache {
 		c.init();
 		console.mainLoop();
 
-
 	}
 
 	private void mainLoop() {
 		try {
 			while(true)
 			{
-//				if(serverAvailable) {
-					cmd = new Scanner(System.in);
-					String message ;
-					System.out.println("Enter your command :");
+				cmd = new Scanner(System.in);
+				String message ;
+				System.out.println("Enter your command :");
+				message = cmd.nextLine();
+				switch(message)
+				{
+				case "listfile" :
+					cache.listFile();
+					break ;
+				case "addfile" :
+					System.out.println("Enter File name :");
 					message = cmd.nextLine();
-					switch(message)
-					{
-					case "listfile" :
-						cache.listFile();
-						break ;
-					case "addfile" :
-						System.out.println("Enter File name :");
-						message = cmd.nextLine();
-						I_Document doc = new Document(message, id);
-						doc.setFile(new String("DocumentContent").getBytes());
-						cache.addFile(doc);
-						break;
-					case "lockfile" :
-						System.out.println("Enter File name :");
-						message = cmd.nextLine();
-						cache.lockFile(message);
-						break;
-					case "updatefile" :
-						cache.updateFile();
-						break;
-					case "downloadfile":
-						System.out.println("Enter File name :");
-						message = cmd.nextLine();
-						cache.downloadFile(message);
-						break;
-					case "unlockfile" :
-						System.out.println("Enter File name :");
-						message = cmd.nextLine();
-						cache.unlockFile(message);
-						break;
-					case "deletefile" :
-						System.out.println("Enter File name :");
-						message = cmd.nextLine();
-						cache.deleteFile(message);
-						break;
-					case "?" :
-					case "help" :
-						System.out.println("Available commands :");
-						System.out.println("- [listfile] give you the list of the available files on server");
-						System.out.println("- [addfile] for adding an existing local file on server");
-						System.out.println("- [lockfile] request a lock on a server file in order to read or modify it");
-						System.out.println("- [updatefile] push your local file to the server");
-						System.out.println("- [downloadfile] request the distant file to be downloaded into your cache. You must obtain the lock on this file before (if not an error is thrown).");
-						System.out.println("- [unlockfile] indicate to the server you finished to work with the file");
-						System.out.println("- [deletefile] request the distant file to be deleted");
-						break;
-					case "exit":
-						System.out.println("Bye");
-						System.exit(0);
-						break;
-					default:
-						System.out.println("Your command is not recognised by the system. Type '?' or 'help' for displaying the command list.");
-					}
-//				}
-//				else
-//				{
-//					System.out.println("Waiting Server....");
-//					while(!serverAvailable){};
-//				}
+					I_Document doc = new Document(message, id);
+					doc.setFile(new String("DocumentContent").getBytes());
+					cache.addFile(doc);
+					break;
+				case "lockfile" :
+					System.out.println("Enter File name :");
+					message = cmd.nextLine();
+					cache.lockFile(message);
+					break;
+				case "updatefile" :
+					cache.updateFile();
+					break;
+				case "downloadfile":
+					System.out.println("Enter File name :");
+					message = cmd.nextLine();
+					cache.downloadFile(message);
+					break;
+				case "unlockfile" :
+					System.out.println("Enter File name :");
+					message = cmd.nextLine();
+					cache.unlockFile(message);
+					break;
+				case "deletefile" :
+					System.out.println("Enter File name :");
+					message = cmd.nextLine();
+					cache.deleteFile(message);
+					break;
+				case "?" :
+				case "help" :
+					System.out.println("Available commands :");
+					System.out.println("- [listfile] give you the list of the available files on server");
+					System.out.println("- [addfile] for adding an existing local file on server");
+					System.out.println("- [lockfile] request a lock on a server file in order to read or modify it");
+					System.out.println("- [updatefile] push your local file to the server");
+					System.out.println("- [downloadfile] request the distant file to be downloaded into your cache. You must obtain the lock on this file before (if not an error is thrown).");
+					System.out.println("- [unlockfile] indicate to the server you finished to work with the file");
+					System.out.println("- [deletefile] request the distant file to be deleted");
+					break;
+				case "exit":
+					System.out.println("Bye");
+					System.exit(0);
+					break;
+				default:
+					System.out.println("Your command is not recognised by the system. Type '?' or 'help' for displaying the command list.");
+				}
 
 			}
 		} catch (Exception e) {
@@ -106,13 +97,13 @@ public class InterfaceClient implements I_APICache {
 	}
 
 	@Override
-	public void handlerAddFile(boolean state) {
+	public void handlerAddFile() {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public void handlerDeleteFile(boolean state) {
+	public void handlerDeleteFile() {
 		// TODO Auto-generated method stub
 
 	}
@@ -128,10 +119,10 @@ public class InterfaceClient implements I_APICache {
 		{
 			if (size == 1) 
 				System.out.println("One file is available on server :");
-			 else {
-				 System.out.println(size+" files are available on server :");
+			else {
+				System.out.println(size+" files are available on server :");
 			}
-			
+
 			for (String url : urlsAvailable) {
 				System.out.println(url);
 			}
@@ -141,14 +132,14 @@ public class InterfaceClient implements I_APICache {
 	}
 
 	@Override
-	public void handlerLockFile(boolean state) {
+	public void handlerLockFile() {
 		// TODO Auto-generated method stub
 
 	}
 
 	@Override
-	public void handlerUpdateFile(boolean state) {
-		
+	public void handlerUpdateFile() {
+
 
 	}
 	//
@@ -187,20 +178,26 @@ public class InterfaceClient implements I_APICache {
 	}
 
 	@Override
-	public void handlerServerAvailable(boolean state) {
-		serverAvailable = state;
+	public void handlerServerAvailable() {
+
 	}
 
 	@Override
 	public void handlerReceivedFile() {
 		// TODO Auto-generated method stub
-		
+
 	}
 
 	@Override
 	public void handlerUnlockFile() {
 		// TODO Auto-generated method stub
-		
+
+	}
+
+	@Override
+	public void handlerPushNewFile() {
+		// TODO Auto-generated method stub
+
 	}
 
 
