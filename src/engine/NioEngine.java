@@ -72,6 +72,7 @@ public class NioEngine implements I_NioEngine{
 			//logger.info("Server created on : "+port+"    [OK]");
 		}catch(Exception e){
 			logger.error("Initialize server error " + e.toString());
+			System.exit(-1);
 		}
 	}
 
