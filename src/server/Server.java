@@ -1,6 +1,7 @@
 package server;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -33,6 +34,9 @@ public class Server implements I_ServerHandler,Runnable{
 	private HashMap<String,I_Document> documents ;
 	private HashMap<I_Document,LockManager> locks;
 	private HashMap<Integer, I_Document> docsLockClient ;
+
+	private HashMap<Integer, SocketChannel> idClients;
+
 	private I_NioEngine nio ;
 	private Thread nioT ;
 	private ByteBuffer tmp ;
@@ -48,6 +52,9 @@ public class Server implements I_ServerHandler,Runnable{
 		locks = new HashMap<>();
 		docsLockClient = new HashMap<>();
 
+		idClients = new HashMap<>();
+
+	
 		backupDirectory = new File("backup");
 		locksDirectory = new File ("lock");
 
@@ -524,9 +531,20 @@ public class Server implements I_ServerHandler,Runnable{
 		tmp.put(data);
 		tmp.rewind();
 		int i = tmp.getInt();
-		c.setId(i);
-		nio.send(socketChannel, data, TYPE_MSG.ACK_HELLO_CLIENT);
-		logger.info("Received HELLO_CLIENT form "+c.getId());
+
+		if(idClients.containsKey(i)) {// check if a client with the same id don't exist already
+			c.setId(-1);
+			logger.error(new String("A client with the same ID already exist. Connection refused."));
+			nio.send(socketChannel, new String("ID").getBytes(), TYPE_MSG.ERROR);
+
+		}
+		else {
+			idClients.put(i, socketChannel);
+
+			c.setId(i);
+			nio.send(socketChannel, data, TYPE_MSG.ACK_HELLO_CLIENT);
+			logger.info("Received HELLO_CLIENT form "+c.getId());
+		}
 	}
 
 
@@ -616,7 +634,10 @@ public class Server implements I_ServerHandler,Runnable{
 			}
 		} catch (FileNotFoundException e) {
 			logger.error("Error restore",e);
-		} catch (IOException e) {
+		} catch (EOFException e){
+			logger.error("Error restore",e);
+		}
+		catch (IOException e) {
 			logger.error("Error restore",e);
 
 		} catch (ClassNotFoundException e) {
