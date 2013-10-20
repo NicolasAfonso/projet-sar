@@ -40,7 +40,7 @@ public class Cache implements I_CacheHandler{
 	 */
 	public Cache(String[] arg,I_APICache hc)
 	{
-		id = Integer.parseInt(args[0]) ;
+		id = Integer.parseInt(arg[0]) ;
 		nio = new NioEngine();
 		urls =  new ArrayList<String>();
 		args = arg;
