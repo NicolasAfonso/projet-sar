@@ -166,6 +166,7 @@ public class Server implements I_ServerHandler,Runnable{
 		}
 		nioT = new Thread(nio);
 		nioT.start();
+		
 		logger.info("Server start on  "+addrServer.toString()+":"+portServer);
 	}
 
@@ -753,6 +754,8 @@ public class Server implements I_ServerHandler,Runnable{
 	@Override
 	public void clientDisconnected(Client client) {
 
+		idClients.remove(client.getId());
+			
 		if(docsLockClient.containsKey(client.getId()));
 		{
 			I_Document doc = docsLockClient.get(client.getId());
