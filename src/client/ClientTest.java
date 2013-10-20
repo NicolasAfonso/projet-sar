@@ -136,6 +136,11 @@ public class ClientTest implements I_APICache {
 		// TODO Auto-generated method stub
 		
 	}
+	@Override
+	public void handlerError(String prefixError) {
+		// TODO Auto-generated method stub
+		
+	}
 
 
 }

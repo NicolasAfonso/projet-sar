@@ -205,5 +205,11 @@ public class InterfaceClient implements I_APICache {
 		}
 	}
 
+	@Override
+	public void handlerPushNewFile() {
+		// TODO Auto-generated method stub
+		
+	}
+
 
 }

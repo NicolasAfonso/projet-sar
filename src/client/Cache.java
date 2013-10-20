@@ -133,8 +133,14 @@ public class Cache implements I_CacheHandler{
 	}
 
 	private void receivedError(byte[] data) {
-		logger.warn(new String(data));
-
+		String prefixError = new String(data);
+		logger.warn("Error detected. Type : " + prefixError);
+		
+		// we will use error prefixes
+			nio.terminate();
+		
+			handlerAPI.handlerError(prefixError);
+			
 	}
 
 	private void reveivedACKLockServer(byte[] data) {
