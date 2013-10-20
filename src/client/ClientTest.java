@@ -31,6 +31,31 @@ public class ClientTest implements I_APICache {
 	}
 	
 	@Override
+	public void handlerLockFile() {
+		cache.downloadFile(currentFile);
+		
+	}
+	
+	@Override
+	public void handlerReceivedFile() {
+		if(cache.getCurrentFile() instanceof TestDocument  )
+		{
+			byte[] b = cache.getCurrentFile().getFile();
+			String old = new String(b);
+			System.out.println("Received : " + old);
+			String test = "tst"+cache.getCurrentFile().getVersionNumber();
+			cache.getCurrentFile().setFile(test.getBytes());
+			cache.updateFile();
+		}
+		
+	}
+
+	@Override
+	public void handlerUpdateFile() {
+		cache.unlockFile(currentFile);
+		
+	}
+	@Override
 	public void handlerUnlockFile() {
 		currentFile = filesAvailable.getFirst();
 		filesAvailable.removeFirst();
@@ -52,51 +77,22 @@ public class ClientTest implements I_APICache {
 				filesAvailable.addLast(url);
 			}
 		}
-		
 		if(first)
 		{
 			if(!filesAvailable.contains("TutuTest"+id))
-			{
-				TestDocument d = new TestDocument("TutuTest"+id, id);
-				d.setFile(new String("VIDE").getBytes());
-				cache.addFile(d);
-				first = false;
+			{TestDocument d = new TestDocument("TutuTest"+id, id);
+			d.setFile(new String("VIDE").getBytes());
+			cache.addFile(d);
 			}
-			
-			if(!filesAvailable.isEmpty() && filesAvailable.contains("TutuTest"+id) )
-				{
+			else
+			{
 				currentFile = filesAvailable.getFirst();
 				filesAvailable.removeFirst();
 				filesAvailable.addLast(currentFile);
 				cache.lockFile(currentFile);
-				}
-
+			}
+			first= false;
 		}
-	}
-
-	@Override
-	public void handlerLockFile() {
-		cache.downloadFile(currentFile);
-		
-	}
-	
-	@Override
-	public void handlerReceivedFile() {
-		if(cache.getCurrentFile() instanceof TestDocument  )
-		{
-			byte[] b = cache.getCurrentFile().getFile();
-			String old = new String(b);
-			System.out.println("Received : " + old);
-			String test = "tst"+cache.getCurrentFile().getVersionNumber();
-			cache.getCurrentFile().setFile(test.getBytes());
-			cache.updateFile();
-		}
-		
-	}
-	
-	@Override
-	public void handlerUpdateFile() {
-		cache.unlockFile(currentFile);
 		
 	}
 
@@ -106,17 +102,16 @@ public class ClientTest implements I_APICache {
 		
 	}
 	
-	public void start(){
-		//cache.listFile();
+	public void start()
+	{
 
 	}
+
 	public static void main(String[] args) {
 
 		ClientTest client = new ClientTest(args);
 		Cache c = client.cache ; 
 		c.init();
-		client.start();
-
 
 	}
 	/**
@@ -133,7 +128,10 @@ public class ClientTest implements I_APICache {
 	}
 	@Override
 	public void handlerPushNewFile() {
-		// TODO Auto-generated method stub
+			
+	}
+	
+	public void handlerHelloServer(){
 		
 	}
 	@Override
@@ -141,6 +139,5 @@ public class ClientTest implements I_APICache {
 		// TODO Auto-generated method stub
 		
 	}
-
 
 }
