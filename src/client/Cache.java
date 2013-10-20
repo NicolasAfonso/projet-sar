@@ -1,4 +1,3 @@
-
 package client;
 
 import java.io.ByteArrayInputStream;
@@ -13,20 +12,19 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.log4j.Logger;
-
 import document.I_Document;
 import engine.I_NioEngine;
 import engine.NioEngine;
 import engine.TYPE_MSG;
+
 public class Cache implements I_CacheHandler{
 
-	private int id ; 
-	private List<String> urls ;
-	private I_NioEngine nio ;
+	private int id ; 			// cache id
+	private List<String> urls ;	// an url is a unique document identifier. urls contains the list of the documents available on the cache.
+	private I_NioEngine nio ;	// the nioEngine
 	private ByteBuffer tmp ;
-	private String[] args;
+	private String[] args;		// client id and port
 	private Thread nioT ;
 	private static final Logger logger = Logger.getLogger(Cache.class);
 	private I_APICache handlerAPI;
@@ -34,16 +32,22 @@ public class Cache implements I_CacheHandler{
 	private String serverName ;
 	private int serverPort;
 	private InetAddress addrServer;
-	public Cache(String[] a,I_APICache hc)
+
+	/**
+	 * Cache constructor
+	 * @param args the arguments passed by the client: id and port 
+	 * @param hc
+	 */
+	public Cache(String[] arg,I_APICache hc)
 	{
-		id = Integer.parseInt(a[0]) ;
+		id = Integer.parseInt(args[0]) ;
 		nio = new NioEngine();
 		urls =  new ArrayList<String>();
-		args = a;;
+		args = arg;
 		nioT = new Thread(nio);
 		handlerAPI = hc ;
 		serverName = "localhost";
-		serverPort = Integer.parseInt(args[1]);
+		serverPort = Integer.parseInt(arg[1]);
 		try {
 			addrServer = InetAddress.getByName(serverName);
 		} catch (UnknownHostException e) {
@@ -53,14 +57,16 @@ public class Cache implements I_CacheHandler{
 
 	}
 
+	/**
+	 * Cache initialization, client connection.
+	 */
 	public void init(){
 		if(serverPort < 1024)
 		{
-			logger.error("Can't used a reserved port");
+			logger.error("The use of port number below 1024 is forbidden, they are reserved for your system.");
 			System.exit(0);
 		}
 		try {
-
 			// Connection			
 			nio.initializeAsClient(addrServer,serverPort,this);
 
@@ -69,17 +75,12 @@ public class Cache implements I_CacheHandler{
 			tmp.putInt(id);
 			nio.send(tmp.array(), TYPE_MSG.HELLO_CLIENT);
 			nioT.start();
-			handlerAPI.handlerServerAvailable();
-
-
 
 		} catch (IOException e) {
 			logger.error("Initialize Client error ");
 			System.exit(0);
 		} 
-
 	}
-
 
 	@Override
 	public void receivedMSG(byte[] data, TYPE_MSG type) {
@@ -116,43 +117,72 @@ public class Cache implements I_CacheHandler{
 			reveivedListServer(data);
 			break;
 		default :
-
+			receivedError(data);
 		}
 	}
 
+	
+/*	MESSAGE HANDLERS
+*/
+	
+	
+	/**
+	 * Handler called when an error message is received.
+	 * @param data
+	 */
+		private void receivedError(byte[] data) {
+
+			int prefixError = Integer.getInteger(new String(data));
+			//String prefixError = new String(data);
+			logger.warn("Error detected. Type : " + prefixError);
+
+			// we will use error prefixes
+			if (prefixError == 0)	
+				nio.terminate();
+
+			handlerAPI.handlerError(prefixError);
+
+		}
+	
+	/**
+	 * 
+	 * @param data
+	 */
+		private void reveivedACKLockServer(byte[] data) {
+			logger.info("Received Lock on "+ new String(data));
+			handlerAPI.handlerLockFile();
+
+
+		}
+	
+	/**
+	 * 
+	 * @param data
+	 */
 	private void reveivedACKUnlockServer(byte[] data) {
 		logger.info("File unlocked : "+new String(data));
 		handlerAPI.handlerUnlockFile();
 
 	}
-
+	
+/**
+ * 
+ * @param data
+ */
 	private void receivedUploadServer(byte[] data) {
 		logger.info("File updated : "+new String(data));
 		handlerAPI.handlerUpdateFile();
 
 	}
+	
 
-	private void receivedError(byte[] data) {
-		
-		int prefixError = Integer.getInteger(new String(data));
-		//String prefixError = new String(data);
-		logger.warn("Error detected. Type : " + prefixError);
-		
-		// we will use error prefixes
-		if (prefixError == 0)	
-			nio.terminate();
-		
-			handlerAPI.handlerError(prefixError);
-			
-	}
+	
 
-	private void reveivedACKLockServer(byte[] data) {
-		logger.info("Received Lock on "+ new String(data));
-		handlerAPI.handlerLockFile();
-
-
-	}
-
+	
+/**
+ * 
+ * @param data
+ */
 	private void reveivedListServer(byte[] data) {
 		logger.info("Received ACK LIST");
 		if(!urls.isEmpty())
@@ -237,6 +267,7 @@ public class Cache implements I_CacheHandler{
 		String url = new String(urlb);
 		urls.remove(url);
 		logger.info("Received DELETE_FILE :"+ url +"-Version  "+versionClient);
+		handlerAPI.handlerDeleteFile();
 	}
 
 	/**
@@ -252,7 +283,10 @@ public class Cache implements I_CacheHandler{
 	}
 
 
-
+/**
+ * 
+ * @param doc
+ */
 	public void addFile(I_Document doc)
 	{
 		if(!urls.contains(doc.getUrl()))
@@ -264,7 +298,7 @@ public class Cache implements I_CacheHandler{
 	}
 
 	/**
-	 * Not used 
+	 * 
 	 * @param urlD
 	 */
 	public void deleteFile(String urlD)
@@ -275,15 +309,21 @@ public class Cache implements I_CacheHandler{
 			docTab.putInt(urlD.length());
 			docTab.put(urlD.getBytes());
 			nio.send(docTab.array(),TYPE_MSG.DELETE);
-			handlerAPI.handlerDeleteFile();
 		}
 	}
-
+	
+/**
+ * 
+ */
 	public void listFile()
 	{					
 		handlerAPI.handlerListFile(urls);
 	}
-
+	
+/**
+ * 
+ * @param url
+ */
 	public void lockFile(String url){
 		if(urls.contains(url))
 		{
@@ -294,7 +334,10 @@ public class Cache implements I_CacheHandler{
 		}
 
 	}
-
+	
+/**
+ * 
+ */
 	public void updateFile(){
 		if(tmpD !=null)
 		{
@@ -306,13 +349,21 @@ public class Cache implements I_CacheHandler{
 
 	}
 
+	/**
+	 * 
+	 * @param message
+	 */
 	public void downloadFile(String message) {
 		tmp = ByteBuffer.allocate(message.length()+4);
 		tmp.putInt(message.length());
 		tmp.put(message.getBytes());
 		nio.send(tmp.array(),TYPE_MSG.DOWNLOAD);
 	}
-
+	
+	/**
+	 * 
+	 * @param url
+	 */
 	public void unlockFile(String url)
 	{
 		ByteBuffer docTab = ByteBuffer.allocate(url.length() + 4);

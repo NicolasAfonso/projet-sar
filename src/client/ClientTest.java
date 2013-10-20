@@ -31,11 +31,6 @@ public class ClientTest implements I_APICache {
 		setId(Integer.parseInt(args[0]));
 		filesAvailable = new LinkedList<String>();
 	}
-	
-	@Override
-	public void handlerAddFile() {
-
-	}
 
 	@Override
 	public void handlerLockFile() {
