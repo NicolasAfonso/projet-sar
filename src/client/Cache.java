@@ -13,17 +13,13 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Scanner;
 
-import javax.swing.plaf.SliderUI;
+import org.apache.log4j.Logger;
 
-import document.Document;
 import document.I_Document;
 import engine.I_NioEngine;
 import engine.NioEngine;
 import engine.TYPE_MSG;
-
-import org.apache.log4j.Logger;
 public class Cache implements I_CacheHandler{
 
 	private int id ; 
@@ -51,14 +47,20 @@ public class Cache implements I_CacheHandler{
 		try {
 			addrServer = InetAddress.getByName(serverName);
 		} catch (UnknownHostException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error(" Unknown Host");
+			System.exit(0);
 		}
 
 	}
 
 	public void init(){
+		if(serverPort < 1024)
+		{
+			logger.error("Can't used a reserved port");
+			System.exit(0);
+		}
 		try {
+
 			// Connection			
 			nio.initializeAsClient(addrServer,serverPort,this);
 
@@ -67,16 +69,13 @@ public class Cache implements I_CacheHandler{
 			tmp.putInt(id);
 			nio.send(tmp.array(), TYPE_MSG.HELLO_CLIENT);
 			nioT.start();
-			handlerAPI.handlerServerAvailable(true);
+			handlerAPI.handlerServerAvailable();
 
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-		} catch (NumberFormatException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+
+
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error("Initialize Client error ");
+			System.exit(0);
 		} 
 
 	}
@@ -124,12 +123,12 @@ public class Cache implements I_CacheHandler{
 	private void reveivedACKUnlockServer(byte[] data) {
 		logger.info("File unlocked : "+new String(data));
 		handlerAPI.handlerUnlockFile();
-		
+
 	}
 
 	private void receivedUploadServer(byte[] data) {
 		logger.info("File updated : "+new String(data));
-		handlerAPI.handlerUpdateFile(true);
+		handlerAPI.handlerUpdateFile();
 
 	}
 
@@ -140,8 +139,8 @@ public class Cache implements I_CacheHandler{
 
 	private void reveivedACKLockServer(byte[] data) {
 		logger.info("Received Lock on "+ new String(data));
-		handlerAPI.handlerLockFile(true);
-		
+		handlerAPI.handlerLockFile();
+
 
 	}
 
@@ -165,11 +164,9 @@ public class Cache implements I_CacheHandler{
 			}
 
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error(" Error to received the list");
 		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error(" Error to received the list");
 		}
 		handlerAPI.handlerListFile(urls);
 	}
@@ -191,7 +188,6 @@ public class Cache implements I_CacheHandler{
 	 * @param data
 	 */
 	private void receivedHelloServer(byte[] data) {
-		// TODO Auto-generated method stub
 		logger.info("Received HELLO_SERVER");
 
 	}
@@ -201,7 +197,6 @@ public class Cache implements I_CacheHandler{
 	 * @param data
 	 */
 	private void receivedPushNewFile(byte[] data) {
-
 		tmp = ByteBuffer.allocate(data.length);
 		tmp.put(data);
 		tmp.rewind();
@@ -214,7 +209,7 @@ public class Cache implements I_CacheHandler{
 		String url = new String(urlb);
 		logger.info("Received PUSH_NEW_FILE :"+ url +"-Version  "+versionClient);
 		urls.add(url);
-		handlerAPI.handlerListFile(urls);
+		handlerAPI.handlerPushNewFile();
 	}
 
 	/**
@@ -222,8 +217,6 @@ public class Cache implements I_CacheHandler{
 	 * @param data
 	 */
 	private void receivedDeleteFile(byte[] data) {
-
-
 		tmp = ByteBuffer.allocate(data.length);
 		tmp.put(data);
 		tmp.rewind();
@@ -234,7 +227,6 @@ public class Cache implements I_CacheHandler{
 		tmp.get(urlb, 0, urlSize);
 		String url = new String(urlb);
 		urls.remove(url);
-
 		logger.info("Received DELETE_FILE :"+ url +"-Version  "+versionClient);
 	}
 
@@ -247,7 +239,6 @@ public class Cache implements I_CacheHandler{
 		tmpD = doc ;
 		logger.info("Received ACK_DOWNLOAD :"+ doc.getUrl() +"-Version  "+doc.getVersionNumber());
 		handlerAPI.handlerReceivedFile();
-		//TODO : Add to list current file		
 
 	}
 
@@ -275,7 +266,7 @@ public class Cache implements I_CacheHandler{
 			docTab.putInt(urlD.length());
 			docTab.put(urlD.getBytes());
 			nio.send(docTab.array(),TYPE_MSG.DELETE);
-			handlerAPI.handlerDeleteFile(true);
+			handlerAPI.handlerDeleteFile();
 		}
 	}
 
@@ -301,6 +292,7 @@ public class Cache implements I_CacheHandler{
 			tmpD.setVersionNumber(tmpD.getVersionNumber()+1);
 			byte[] docU = I_DocumentToByte(tmpD);
 			nio.send(docU, TYPE_MSG.UPLOAD);
+			tmpD = null;
 		}
 
 	}
@@ -314,27 +306,14 @@ public class Cache implements I_CacheHandler{
 
 	public void unlockFile(String url)
 	{
-			ByteBuffer docTab = ByteBuffer.allocate(url.length() + 4);
-			docTab.putInt(url.length());
-			docTab.put(url.getBytes());
-			nio.send(docTab.array(),TYPE_MSG.UNLOCK);
+		ByteBuffer docTab = ByteBuffer.allocate(url.length() + 4);
+		docTab.putInt(url.length());
+		docTab.put(url.getBytes());
+		nio.send(docTab.array(),TYPE_MSG.UNLOCK);
 
 
 	}
-	/**
-	 * @param cache the cache to set
-	 */
-	public void setCache(List<I_Document> cache) {
-		//this.cache = cache;
-	}
 
-	public void addCache(I_Document doc){
-		//cache.add(doc);
-	}
-
-	public void removeCache(I_Document doc){
-		//cache.remove(doc);
-	}
 
 	/**
 	 * Tools
@@ -355,11 +334,9 @@ public class Cache implements I_CacheHandler{
 			in.close();
 			return doc;
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error(" Error convert Bytes in I_Document");
 		} catch (ClassNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error(" Error convert Bytes in I_Document");
 		}
 		return null;
 	}
@@ -381,8 +358,7 @@ public class Cache implements I_CacheHandler{
 			bos.close();
 			return bytes;
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.error(" Error convert I_Document in Bytes");
 		}
 		return null;
 	}
@@ -397,7 +373,6 @@ public class Cache implements I_CacheHandler{
 				nio.reconnect(addrServer, serverPort);
 				nio.initializeAsClient(addrServer, serverPort, this);
 				serverReboot = nio.isConnected();
-				handlerAPI.handlerServerAvailable(false);
 			} catch (IOException e) {
 
 			} catch (InterruptedException e) {
@@ -405,7 +380,7 @@ public class Cache implements I_CacheHandler{
 			}
 		}
 		logger.info("Server available");
-		handlerAPI.handlerServerAvailable(true);
+		handlerAPI.handlerServerAvailable();
 		tmp = ByteBuffer.allocate(4);
 		tmp.putInt(id);
 		nio.send(tmp.array(), TYPE_MSG.HELLO_CLIENT);
@@ -414,7 +389,7 @@ public class Cache implements I_CacheHandler{
 
 	public I_Document getCurrentFile() {
 		return tmpD;
-		
+
 	}
 
 

@@ -20,7 +20,6 @@ import java.util.Set;
 import org.apache.log4j.Logger;
 
 import server.I_ServerHandler;
-import client.Cache;
 import client.I_CacheHandler;
 import document.I_Document;
 
@@ -62,7 +61,7 @@ public class NioEngine implements I_NioEngine{
 			this.port = port ;
 			this.selector = SelectorProvider.provider().openSelector();
 			this.handlerServer = handler; 
-			
+
 			// Server Socket Channel creation (not blocking) 
 			serverChannel = ServerSocketChannel.open();
 			serverChannel.configureBlocking(false);
@@ -72,11 +71,10 @@ public class NioEngine implements I_NioEngine{
 			serverChannel.register(selector, SelectionKey.OP_ACCEPT);
 			//logger.info("Server created on : "+port+"    [OK]");
 		}catch(Exception e){
-			//TODO
 			logger.error("Initialize server error " + e.toString());
 		}
 	}
-	
+
 	@Override
 	public void initializeAsClient(InetAddress hostAddress, int port,I_CacheHandler handler){
 		try{
@@ -100,8 +98,7 @@ public class NioEngine implements I_NioEngine{
 			try {
 				socketChannel_Client.close();
 			} catch (IOException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
+				logger.error("Cann't closed the SocketChannel Client");
 			}
 		}
 	}
@@ -131,8 +128,7 @@ public class NioEngine implements I_NioEngine{
 				}
 			}	
 			catch(Exception e){
-				//TODO
-				logger.error("Main loop error " ,e);}
+				logger.error("Error in Mainloop " ,e);}
 		}
 	}
 
@@ -156,12 +152,11 @@ public class NioEngine implements I_NioEngine{
 			Client c = new Client(socketChannel) ;
 			clients.put(socketChannel,c);
 
-			
+
 			// Wait a READ event. 
 			socketChannel.register(this.selector, SelectionKey.OP_READ);
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			logger.error("Erreur Accept : ", e);
+			logger.error("Erreur in Accept : ", e);
 		}
 	}
 
@@ -286,7 +281,7 @@ public class NioEngine implements I_NioEngine{
 			}
 
 		}catch(Exception e){
-			logger.error("Reading Error : " , e);
+			//			logger.error("Reading Error : " , e);
 			if(socketChannel_Client != null)
 			{
 				handlerClient.serverNotAvailable();
@@ -298,7 +293,6 @@ public class NioEngine implements I_NioEngine{
 			try {
 				socketChannel.close();
 			} catch (IOException e1) {
-				//TODO
 				logger.error("Error socket close",e1);
 			}
 		}
@@ -316,7 +310,7 @@ public class NioEngine implements I_NioEngine{
 		ByteBuffer out ;
 		out = clients.get(socketChannel).getBuffout().buffout;
 
-	//	System.out.println("Send "+ out.capacity() + " bytes ( Message size : " + (out.capacity()-4)  +" bytes)");
+		//	System.out.println("Send "+ out.capacity() + " bytes ( Message size : " + (out.capacity()-4)  +" bytes)");
 		try{
 			socketChannel.write(out);
 			socketChannel.register(this.selector, SelectionKey.OP_READ);
@@ -338,8 +332,7 @@ public class NioEngine implements I_NioEngine{
 				send(socketChannel_Client,data,type);
 			}
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			logger.error("Error send",e);
+			handlerClient.serverNotAvailable();
 		}
 	}
 
@@ -351,7 +344,7 @@ public class NioEngine implements I_NioEngine{
 		z.put(data);
 		//System.out.println("Taille du message à envoyer : z.getInt(0));
 		clients.get(socketChannel).getBuffout().buffout = ByteBuffer.wrap(z.array());	
-		
+
 		SelectionKey key = socketChannel.keyFor(this.selector);
 		key.interestOps(SelectionKey.OP_WRITE);
 		//logger.info("Send "+type.toString()+" to "+clients.get(socketChannel).getId());
@@ -366,7 +359,7 @@ public class NioEngine implements I_NioEngine{
 			{
 				socketChannel_Client.close();
 				socketChannel_Client.keyFor(selector).cancel();
-				
+
 			}
 			else
 			{
@@ -375,7 +368,6 @@ public class NioEngine implements I_NioEngine{
 			}
 
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			logger.error("Error in terminate",e);
 		}
 
@@ -383,10 +375,10 @@ public class NioEngine implements I_NioEngine{
 
 	@Override
 	public Client getClient(SocketChannel socketChannel) {
-		
+
 		return clients.get(socketChannel);
 	}
-	
+
 	@Override
 	public List<Client> getClients(){
 		Object[] objs= clients.values().toArray();
@@ -397,21 +389,21 @@ public class NioEngine implements I_NioEngine{
 		}
 		return clients;
 	}
-	
+
 	public void push(I_Document doc, TYPE_MSG type){
-		
+
 		String url = doc.getUrl();
 		int version = doc.getVersionNumber();
 		//String msg = version + url.length() + url ;
-		
+
 		//byte[] docTab =  new byte[url.length()+8];
-		
-		 //byte[] docTab = new byte(msg);
+
+		//byte[] docTab = new byte(msg);
 		ByteBuffer docTab = ByteBuffer.allocate(url.length() + 8);
 		docTab.putInt(version);
 		docTab.putInt(url.length());
 		docTab.put(url.getBytes());
-		
+
 		Set<SocketChannel> keys = clients.keySet();
 		Iterator it = keys.iterator();
 		while (it.hasNext()){	
@@ -422,20 +414,18 @@ public class NioEngine implements I_NioEngine{
 	@Override
 	public void run() {
 		this.mainloop();
-		
+
 	}
 
 	@Override
 	public void reconnect(InetAddress hostAddress,int port) throws InterruptedException {
 		if(socketChannel_Client!=null)	
-		try {
+			try {
 				socketChannel_Client.close();
 				selector.close();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				logger.error("Error to close SocketChannel client and selector");
 			}
-
 
 	}
 

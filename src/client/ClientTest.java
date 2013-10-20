@@ -8,7 +8,7 @@ import java.util.logging.Logger;
 import document.I_Document;
 import document.TestDocument;
 
-public class clientTest implements I_APICache {
+public class ClientTest implements I_APICache {
 	
 	private String currentFile = null;
 	private boolean first = true;
@@ -16,13 +16,13 @@ public class clientTest implements I_APICache {
 	private static int id ;
 	LinkedList<String> filesAvailable ; 
 
-	public clientTest(String[] args){
+	public ClientTest(String[] args){
 		cache = new Cache(args,this);
 		setId(Integer.parseInt(args[0]));
 		filesAvailable = new LinkedList<String>();
 	}
 	@Override
-	public void handlerAddFile(boolean state) {
+	public void handlerAddFile() {
 		currentFile = filesAvailable.getFirst();
 		filesAvailable.removeFirst();
 		filesAvailable.addLast(currentFile);
@@ -39,7 +39,7 @@ public class clientTest implements I_APICache {
 	}
 	
 	@Override
-	public void handlerDeleteFile(boolean state) {
+	public void handlerDeleteFile() {
 		// TODO Auto-generated method stub
 		
 	}
@@ -75,7 +75,7 @@ public class clientTest implements I_APICache {
 	}
 
 	@Override
-	public void handlerLockFile(boolean state) {
+	public void handlerLockFile() {
 		cache.downloadFile(currentFile);
 		
 	}
@@ -95,13 +95,13 @@ public class clientTest implements I_APICache {
 	}
 	
 	@Override
-	public void handlerUpdateFile(boolean state) {
+	public void handlerUpdateFile() {
 		cache.unlockFile(currentFile);
 		
 	}
 
 	@Override
-	public void handlerServerAvailable(boolean state) {
+	public void handlerServerAvailable() {
 		// TODO Auto-generated method stub
 		
 	}
@@ -112,7 +112,7 @@ public class clientTest implements I_APICache {
 	}
 	public static void main(String[] args) {
 
-		clientTest client = new clientTest(args);
+		ClientTest client = new ClientTest(args);
 		Cache c = client.cache ; 
 		c.init();
 		client.start();
@@ -129,7 +129,12 @@ public class clientTest implements I_APICache {
 	 * @param id the id to set
 	 */
 	public static void setId(int id) {
-		clientTest.id = id;
+		ClientTest.id = id;
+	}
+	@Override
+	public void handlerPushNewFile() {
+		// TODO Auto-generated method stub
+		
 	}
 
 
