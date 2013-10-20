@@ -133,10 +133,13 @@ public class Cache implements I_CacheHandler{
 	}
 
 	private void receivedError(byte[] data) {
-		String prefixError = new String(data);
+		
+		int prefixError = Integer.getInteger(new String(data));
+		//String prefixError = new String(data);
 		logger.warn("Error detected. Type : " + prefixError);
 		
 		// we will use error prefixes
+		if (prefixError == 0)	
 			nio.terminate();
 		
 			handlerAPI.handlerError(prefixError);
@@ -215,7 +218,7 @@ public class Cache implements I_CacheHandler{
 		String url = new String(urlb);
 		logger.info("Received PUSH_NEW_FILE :"+ url +"-Version  "+versionClient);
 		urls.add(url);
-		handlerAPI.handlerPushNewFile();
+		handlerAPI.handlerPushNewFile(url);
 	}
 
 	/**

@@ -276,13 +276,13 @@ public class Server implements I_ServerHandler,Runnable{
 			else{
 				logger.warn("Unlock refused for "+docRequest.getUrl()+" to "+client.getId());
 
-				nio.send(this.getClientSocketChannel(client.getId()),"You must have lock to unlock file ! ".getBytes(),TYPE_MSG.ERROR);
+				nio.send(this.getClientSocketChannel(client.getId()),ByteBuffer.allocate(4).putInt(1).array(),TYPE_MSG.ERROR);
 			}
 		}
 		else
 		{
 			logger.warn("Unlock refused from "+client.getId());
-			nio.send(this.getClientSocketChannel(client.getId()),"You must have lock to unlock file ! ".getBytes(),TYPE_MSG.ERROR);
+			nio.send(this.getClientSocketChannel(client.getId()),ByteBuffer.allocate(4).putInt(1).array(),TYPE_MSG.ERROR);
 		}
 
 	}
@@ -401,13 +401,13 @@ public class Server implements I_ServerHandler,Runnable{
 			}else
 			{
 				logger.warn("Received bad remove request "+ "from "+client.getId());
-				nio.send(this.getClientSocketChannel(client.getId()),"You must have owner to delete file !".getBytes(),TYPE_MSG.ERROR);
+				nio.send(this.getClientSocketChannel(client.getId()),ByteBuffer.allocate(4).putInt(4).array(),TYPE_MSG.ERROR);
 			}
 
 		}else
 		{
 			logger.warn("Received bad remove request "+ "from "+client.getId());
-			nio.send(this.getClientSocketChannel(client.getId()),"You must have lock and be owner to delete file ! ".getBytes(),TYPE_MSG.ERROR);
+			nio.send(this.getClientSocketChannel(client.getId()),ByteBuffer.allocate(4).putInt(1).array(),TYPE_MSG.ERROR);
 		}
 
 
@@ -443,19 +443,19 @@ public class Server implements I_ServerHandler,Runnable{
 				else
 				{
 					logger.warn("Received bad document request "+ "from "+client.getId());
-					nio.send(socketChannel,"Document not available".getBytes(),TYPE_MSG.ERROR);
+					nio.send(socketChannel,ByteBuffer.allocate(4).putInt(3).array(),TYPE_MSG.ERROR);
 				}
 			}
 			else
 			{
 				logger.warn("Received bad document request "+ "from "+client.getId());
-				nio.send(socketChannel,"You must have lock file before download".getBytes(),TYPE_MSG.ERROR);
+				nio.send(socketChannel,ByteBuffer.allocate(4).putInt(1).array(),TYPE_MSG.ERROR);
 			}
 		}	
 		else
 		{
 			logger.warn("Received bad document request "+ "from "+client.getId());
-			nio.send(socketChannel,"You must have lock file before download".getBytes(),TYPE_MSG.ERROR);
+			nio.send(socketChannel,ByteBuffer.allocate(4).putInt(1).array(),TYPE_MSG.ERROR);
 		}
 
 
@@ -470,7 +470,7 @@ public class Server implements I_ServerHandler,Runnable{
 		Client client = nio.getClient(socketChannel);
 		logger.info("Received UPLOAD form "+client.getId());
 		I_Document docReceived = bytesToI_Document(data);
-		I_Document doc = documents.get(docReceived.getUrl()); // on suppose que c'est juste un objet pour l'instant
+		I_Document doc = documents.get(docReceived.getUrl()); // we check if the document already exist on the server
 		if(doc == null)
 		{
 			logger.info("Create new document "+docReceived.getUrl()+" and push clients ");
@@ -497,12 +497,13 @@ public class Server implements I_ServerHandler,Runnable{
 				else
 				{
 					logger.warn("Received old version document "+ docReceived.getUrl() +" from "+client.getId());
+					nio.send(socketChannel, ByteBuffer.allocate(4).putInt(2).array(), TYPE_MSG.ERROR);
 				}
 			}
 			else
 			{
 				logger.warn("Received bad document request "+ "from "+client.getId());
-				nio.send(socketChannel,"You must have lock file before upload".getBytes(),TYPE_MSG.ERROR);
+				nio.send(socketChannel,ByteBuffer.allocate(4).putInt(1).array(),TYPE_MSG.ERROR);
 			}
 		}
 	}
@@ -536,7 +537,7 @@ public class Server implements I_ServerHandler,Runnable{
 		if(idClients.containsKey(i)) {// check if a client with the same id don't exist already
 			c.setId(-1);
 			logger.error(new String("A client with the same ID already exist. Connection refused."));
-			nio.send(socketChannel, new String("ID").getBytes(), TYPE_MSG.ERROR);
+			nio.send(socketChannel, ByteBuffer.allocate(4).putInt(0).array(), TYPE_MSG.ERROR);
 
 		}
 		else {

@@ -126,16 +126,18 @@ public class ClientTest implements I_APICache {
 	public static void setId(int id) {
 		ClientTest.id = id;
 	}
-	@Override
-	public void handlerPushNewFile() {
-			
-	}
+	
 	
 	public void handlerHelloServer(){
 		
 	}
 	@Override
-	public void handlerError(String prefixError) {
+	public void handlerError(int prefixError) {
+		// TODO Auto-generated method stub
+		
+	}
+	@Override
+	public void handlerPushNewFile(String url) {
 		// TODO Auto-generated method stub
 		
 	}

@@ -13,6 +13,6 @@ public interface I_APICache {
 	public void handlerReceivedFile();
 	public void handlerUnlockFile();
 	
-	public void handlerError(String prefixError);
-	public void handlerPushNewFile();
+	public void handlerError(int prefixError);
+	public void handlerPushNewFile(String url);
 }

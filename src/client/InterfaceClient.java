@@ -107,7 +107,6 @@ public class InterfaceClient implements I_APICache {
 		// TODO Auto-generated method stub
 
 	}
-
 	@Override
 	public void handlerListFile(List<String> urlsAvailable) {
 		int size = urlsAvailable.size();
@@ -153,7 +152,7 @@ public class InterfaceClient implements I_APICache {
 	//
 	//	}
 	//
-	//	private void remove() {
+	//	private void remove() {InterfaceClient
 	//		// TODO Auto-generated method stub
 	//
 	//	}
@@ -195,21 +194,40 @@ public class InterfaceClient implements I_APICache {
 	}
 
 	@Override
-	public void handlerError(String errorType) {
+	public void handlerError(int errorType) {
 		
 		
-		if (errorType.equals("ID"))
-		{
-		System.out.println("Your ID is already used by another client. Connection will be aborted.");
-		System.exit(0);
+		switch (errorType) {
+		
+		case 0 :
+			System.out.println("Your ID is already used by another client. Connection will be aborted.");
+			System.exit(0);
+			break;
+		case 1 :
+			System.out.println("You have to lock the file before !");
+		case 2:
+			System.out.println("You have uploaded a document whose version is older than it is on the server.");
+		case 3:
+			System.out.println("The document you requested is not available.");
+		case 4:
+			System.out.println("You do not have the permission to remove this file. Only the author can delete it.");
 		}
+		
+		
+		
+		/*if (errorType.equals("ID"))
+		
+		}*/
+			
 	}
 
 	@Override
-	public void handlerPushNewFile() {
+	public void handlerPushNewFile(String url) {
 		// TODO Auto-generated method stub
 		
 	}
+
+
 
 
 }
