@@ -195,9 +195,14 @@ public class InterfaceClient implements I_APICache {
 	}
 
 	@Override
-	public void handlerPushNewFile() {
-		// TODO Auto-generated method stub
-
+	public void handlerError(String errorType) {
+		
+		
+		if (errorType.equals("ID"))
+		{
+		System.out.println("Your ID is already used by another client. Connection will be aborted.");
+		System.exit(0);
+		}
 	}
 
 

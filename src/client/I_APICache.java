@@ -12,5 +12,6 @@ public interface I_APICache {
 	public void handlerServerAvailable();
 	public void handlerReceivedFile();
 	public void handlerUnlockFile();
-	public void handlerPushNewFile();
+	
+	public void handlerError(String prefixError);
 }
