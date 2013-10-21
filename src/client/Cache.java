@@ -132,7 +132,11 @@ public class Cache implements I_CacheHandler{
 	 */
 		private void receivedError(byte[] data) {
 
-			int prefixError = Integer.getInteger(new String(data));
+			//int prefixError = Integer.getInteger(new String(data));
+			tmp = ByteBuffer.allocate(data.length);
+			tmp.put(data);
+			tmp.rewind();
+			int prefixError = tmp.getInt(0);
 			//String prefixError = new String(data);
 			logger.warn("Error detected. Type : " + prefixError);
 
