@@ -211,7 +211,7 @@ public class NioEngine implements I_NioEngine{
 					else
 					{	
 						handlerServer.clientDisconnected(c);
-						logger.warn("Client "+c.getId() +" is disconnected");
+
 					}
 
 					//System.out.println("STYPE_MSG type = null;IZE numRead = -1 , delete key and close channel");
@@ -282,7 +282,6 @@ public class NioEngine implements I_NioEngine{
 			}
 
 		}catch(Exception e){
-			//			logger.error("Reading Error : " , e);
 			if(socketChannel_Client != null)
 			{
 				handlerClient.serverNotAvailable();
