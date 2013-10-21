@@ -217,6 +217,9 @@ public class ClientTest implements I_APICache {
 			case 4:
 				System.out.println("You do not have the permission to remove this file. Only the author can delete it.");
 				break;
+			case 5:
+				System.out.println("A file with the same name already exist on server. Please change the file name if you think it is a different one.");
+				break;
 			default :
 				System.out.println("Unknown Error");
 				break;
