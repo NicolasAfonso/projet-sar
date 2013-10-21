@@ -7,8 +7,9 @@ public interface I_APICache {
 	
 	/**
 	 * Actions the cache have to perform when a delete file ack message is received. 
+	 * @param url
 	 */
-	public void handlerDeleteFile();
+	public void handlerDeleteFile(String url);
 	
 	/**
 	 * Actions the cache have to perform when a file list ack message is received.
@@ -18,28 +19,37 @@ public interface I_APICache {
 	
 	/**
 	 * Actions the cache have to perform when a lock file ack message is received.
+	 * @param url
 	 */
-	public void handlerLockFile() ;
+	public void handlerLockFile(String url) ;
 	
 	/**
 	 * Actions the cache have to perform when an update file ack message is received.
+	 * @param url
 	 */
-	public void handlerUpdateFile();
+	public void handlerUpdateFile(String url);
 	
 	/**
-	 * Actions the cache have to perform when the server is not available.
+	 * Actions the cache have to perform when the server is available.
 	 */
 	public void handlerServerAvailable();
 	
 	/**
-	 * Actions the cache have to perform when a download ack message is received.
+	 * Actions the cache have to perform when the server is available.
 	 */
-	public void handlerReceivedFile();
+	public void handlerServerNotAvailable();
+	
+	/**
+	 * Actions the cache have to perform when a download ack message is received.
+	 * @param url
+	 */
+	public void handlerReceivedFile(String url);
 	
 	/**
 	 * Actions the cache have to perform when an unlock ack message is received.
+	 * @param url
 	 */
-	public void handlerUnlockFile();
+	public void handlerUnlockFile(String url);
 	
 	/**
 	 * Actions the cache have to perform when an error message is received.  

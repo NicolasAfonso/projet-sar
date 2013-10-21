@@ -97,8 +97,8 @@ public class InterfaceClient implements I_APICache {
 	}
 
 	@Override
-	public void handlerDeleteFile() {
-		// TODO Auto-generated method stub
+	public void handlerDeleteFile(String url) {
+		System.out.println("File "+ url +" has been deleted");
 
 	}
 	@Override
@@ -125,36 +125,16 @@ public class InterfaceClient implements I_APICache {
 	}
 
 	@Override
-	public void handlerLockFile() {
-		// TODO Auto-generated method stub
+	public void handlerLockFile(String url) {
+		System.out.println("File "+ url +" has been locked");
 
 	}
 
 	@Override
-	public void handlerUpdateFile() {
-
+	public void handlerUpdateFile(String url) {
+		System.out.println("File "+ url +" has been updated");
 
 	}
-	//
-	//	private void leave() {
-	//		// TODO Auto-generated method stub
-	//
-	//	}
-	//
-	//	private void accessFile() {
-	//		// TODO Auto-generated method stub
-	//
-	//	}
-	//
-	//	private void remove() {InterfaceClient
-	//		// TODO Auto-generated method stub
-	//
-	//	}
-	//
-	//	private void addFile(I_Document doc) {
-	//		cache.addFile(doc);
-	//
-	//	}
 
 	/**
 	 * @return the id
@@ -172,18 +152,23 @@ public class InterfaceClient implements I_APICache {
 
 	@Override
 	public void handlerServerAvailable() {
+		System.out.println("Server is available");
+	}
+	
+	@Override
+	public void handlerServerNotAvailable() {
+		System.out.println("Server is not available");
+	}
+	
+	@Override
+	public void handlerReceivedFile(String url) {
+		System.out.println("File "+ url +" has been received");
 
 	}
 
 	@Override
-	public void handlerReceivedFile() {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public void handlerUnlockFile() {
-		// TODO Auto-generated method stub
+	public void handlerUnlockFile(String url) {
+		System.out.println("File "+ url +" has been unlocked");
 
 	}
 
@@ -222,7 +207,7 @@ public class InterfaceClient implements I_APICache {
 
 	@Override
 	public void handlerPushNewFile(String url) {
-		// TODO Auto-generated method stub
+		System.out.println("File "+ url +" has been pushed");
 		
 	}
 

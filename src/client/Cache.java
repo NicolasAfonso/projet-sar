@@ -153,8 +153,9 @@ public class Cache implements I_CacheHandler{
 	 * @param data
 	 */
 		private void reveivedACKLockServer(byte[] data) {
-			logger.info("Received Lock on "+ new String(data));
-			handlerAPI.handlerLockFile();
+			String url = new String(data);
+			logger.info("Received Lock on "+ url);
+			handlerAPI.handlerLockFile(url);
 
 
 		}
@@ -164,8 +165,9 @@ public class Cache implements I_CacheHandler{
 	 * @param data
 	 */
 	private void reveivedACKUnlockServer(byte[] data) {
-		logger.info("File unlocked : "+new String(data));
-		handlerAPI.handlerUnlockFile();
+		String url = new String(data);
+		logger.info("File unlocked : "+url);
+		handlerAPI.handlerUnlockFile(url);
 
 	}
 	
@@ -174,8 +176,9 @@ public class Cache implements I_CacheHandler{
  * @param data
  */
 	private void receivedUploadServer(byte[] data) {
-		logger.info("File updated : "+new String(data));
-		handlerAPI.handlerUpdateFile();
+		String url = new String(data);
+		logger.info("File updated : "+url);
+		handlerAPI.handlerUpdateFile(url);
 
 	}
 	
@@ -271,7 +274,7 @@ public class Cache implements I_CacheHandler{
 		String url = new String(urlb);
 		urls.remove(url);
 		logger.info("Received DELETE_FILE :"+ url +"-Version  "+versionClient);
-		handlerAPI.handlerDeleteFile();
+		handlerAPI.handlerDeleteFile(url);
 	}
 
 	/**
@@ -282,7 +285,7 @@ public class Cache implements I_CacheHandler{
 		I_Document doc = bytesToI_Document(data);
 		tmpD = doc ;
 		logger.info("Received ACK_DOWNLOAD :"+ doc.getUrl() +"-Version  "+doc.getVersionNumber());
-		handlerAPI.handlerReceivedFile();
+		handlerAPI.handlerReceivedFile(doc.getUrl());
 
 	}
 
@@ -430,6 +433,7 @@ public class Cache implements I_CacheHandler{
 	@Override
 	public void serverNotAvailable() {
 		logger.info("Server isn't available");
+		handlerAPI.handlerServerNotAvailable();
 		boolean serverReboot = false;
 		while(!serverReboot)
 		{			

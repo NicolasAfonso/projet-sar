@@ -33,13 +33,15 @@ public class ClientTest implements I_APICache {
 	}
 
 	@Override
-	public void handlerLockFile() {
+	public void handlerLockFile(String url) {
+		System.out.println("File "+ url +" has been locked");
 		cache.downloadFile(currentFile);
 
 	}
 
 	@Override
-	public void handlerReceivedFile() {
+	public void handlerReceivedFile(String url) {
+		System.out.println("File "+ url +" has been received");
 		if(cache.getCurrentFile() instanceof TestDocument  )
 		{
 
@@ -55,10 +57,8 @@ public class ClientTest implements I_APICache {
 				cache.getCurrentFile().setFile(byteOut.toByteArray());
 				cache.updateFile();
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (ClassNotFoundException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 
@@ -67,12 +67,14 @@ public class ClientTest implements I_APICache {
 	}
 
 	@Override
-	public void handlerUpdateFile() {
+	public void handlerUpdateFile(String url) {
+		System.out.println("File "+ url +" has been updated");
 		cache.unlockFile(currentFile);
 
 	}
 	@Override
-	public void handlerUnlockFile() {
+	public void handlerUnlockFile(String url) {
+		System.out.println("File "+ url +" has been locked");
 		currentFile = filesAvailable.getFirst();
 		filesAvailable.removeFirst();
 		filesAvailable.addLast(currentFile);
@@ -80,8 +82,8 @@ public class ClientTest implements I_APICache {
 	}
 
 	@Override
-	public void handlerDeleteFile() {
-		// TODO Auto-generated method stub
+	public void handlerDeleteFile(String url) {
+		System.out.println("File "+ url +" has been deleted");
 
 	}
 
@@ -132,9 +134,14 @@ public class ClientTest implements I_APICache {
 
 	@Override
 	public void handlerServerAvailable() {
-		if(!first)
-			{serverfail = true;}
-
+		System.out.println("Server is available");
+	}
+	
+	@Override
+	public void handlerServerNotAvailable() {
+		System.out.println("Server is not available");
+		serverfail = true;
+		
 	}
 
 	public static void main(String[] args) {
@@ -186,6 +193,7 @@ public class ClientTest implements I_APICache {
 
 	@Override
 	public void handlerPushNewFile(String url) {
+		System.out.println("File "+ url +" has been pushed");
 		if(url.equals("TutuTest"+id))
 		{
 			filesAvailable.addLast(url);
@@ -203,6 +211,8 @@ public class ClientTest implements I_APICache {
 			cache.lockFile(currentFile);
 		}
 	}
+
+
 
 
 }
