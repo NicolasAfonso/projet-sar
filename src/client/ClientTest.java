@@ -227,6 +227,7 @@ public class ClientTest implements I_APICache {
 		
 	}
 
+	
 	@Override
 	public void handlerPushNewFile(String url) {
 		System.out.println("File "+ url +" has been pushed");
