@@ -136,31 +136,51 @@ public class Server implements I_ServerHandler,Runnable{
 		List<String> listFic = listDirectory(backupDirectory);
 		for(String nameFic: listFic)
 		{
+			if(!nameFic.contains(".bak"))
+			{
 			I_Document docRestore = this.restoreDocument(backupDirectory,nameFic);
-			logger.info("Restore document "+docRestore.getUrl()+" and push clients ");
-			documents.put(docRestore.getUrl(),docRestore);
-			//docsClient.put(nio.getClient(socketChannel).getId(), docReceived);				
-
+			
+			if(docRestore==null)
+			{
+				logger.error("Erase the last document beacause is corrupted");
+				docRestore = this.restoreDocument(backupDirectory,nameFic+".bak");
+				logger.info("Restore document "+docRestore.getUrl()+" and push clients ");
+				this.backupDocument(backupDirectory,docRestore,false);
+				documents.put(docRestore.getUrl(),docRestore);
+			}
+			else
+			{
+				logger.info("Restore document "+docRestore.getUrl()+" and push clients ");
+				documents.put(docRestore.getUrl(),docRestore);
+			}
+		
+			}
 		}
 
 		logger.info("Server restore locks  ");
 		listFic = listDirectory(locksDirectory);
 		for(String nameFic: listFic)
 		{
-
-			LockManager lockRestore = this.restoreLock(locksDirectory,nameFic);
-			if(lockRestore == null)
+			if(!nameFic.contains(".bak"))
 			{
-				logger.error("Erase the last lock beacause is corrupted");
-				locks.put(documents.get(nameFic),new LockManager(documents.get(nameFic).getUrl()));
-				this.backupLock(locksDirectory,locks.get(documents.get(nameFic)));
-			}else
-			{
-				lockRestore.getWaitLock().clear();
-				logger.info("Restore lock on "+lockRestore.getUrlD());
-				locks.put(documents.get(lockRestore.getUrlD()),lockRestore);
-				//docsClient.put(nio.getClient(socketChannel).getId(), docReceived);	
+				LockManager lockRestore = this.restoreLock(locksDirectory,nameFic);
+				if(lockRestore == null)
+				{
+					logger.error("Erase the last lock beacause is corrupted");
+					lockRestore = this.restoreLock(locksDirectory,nameFic+".bak");
+					lockRestore.getWaitLock().clear();
+					logger.info("Restore lock on "+lockRestore.getUrlD());
+					locks.put(documents.get(lockRestore.getUrlD()),lockRestore);
+					this.backupLock(locksDirectory,locks.get(documents.get(nameFic)),false);
+				}else
+				{
+					lockRestore.getWaitLock().clear();
+					logger.info("Restore lock on "+lockRestore.getUrlD());
+					locks.put(documents.get(lockRestore.getUrlD()),lockRestore);
+	
+				}
 			}
+			
 			
 
 		}
@@ -236,6 +256,7 @@ public class Server implements I_ServerHandler,Runnable{
 				logger.info("Received unlock on "+ docRequest.getUrl() + "form client "+client.getId());
 				docsLockClient.remove(client.getId());
 				nio.send(this.getClientSocketChannel(client.getId()),docRequest.getUrl().getBytes(),TYPE_MSG.ACK_UNLOCK);
+				this.backupLock(locksDirectory,lock,true);
 				int nextClient = lock.nextLock();
 				if(nextClient !=-1)
 				{
@@ -271,7 +292,7 @@ public class Server implements I_ServerHandler,Runnable{
 				{
 					lock.setLock(-1);
 				}
-				this.backupLock(locksDirectory,lock);
+				this.backupLock(locksDirectory,lock,false);
 			}
 			else{
 				logger.warn("Unlock refused for "+docRequest.getUrl()+" to "+client.getId());
@@ -302,11 +323,13 @@ public class Server implements I_ServerHandler,Runnable{
 		if(doc != null)
 		{
 			LockManager lock = locks.get(doc);
+			this.backupLock(locksDirectory,lock,true);
 			if(lock.getLock()==-1)
 			{
+				this.backupLock(locksDirectory,lock,true);
 				lock.setLock(c.getId());
 				docsLockClient.put(c.getId(),doc);
-				this.backupLock(locksDirectory, lock);
+				this.backupLock(locksDirectory, lock,false);
 				nio.send(this.getClientSocketChannel(c.getId()),doc.getUrl().getBytes(),TYPE_MSG.ACK_LOCK);
 				logger.info("Give Lock on "+ doc.getUrl()+" to " +c.getId());	
 			}
@@ -326,7 +349,7 @@ public class Server implements I_ServerHandler,Runnable{
 					else
 					{
 						lock.addWaitLock(c.getId());
-						this.backupLock(locksDirectory, lock);
+						this.backupLock(locksDirectory, lock,false);
 						logger.info("Wait Lock on "+ doc.getUrl() + " by Client "+c.getId());
 						checkLockClient(lock,doc);
 					}
@@ -477,8 +500,10 @@ public class Server implements I_ServerHandler,Runnable{
 			documents.put(docReceived.getUrl(),docReceived);
 			docsLockClient.put(nio.getClient(socketChannel).getId(), docReceived);
 			locks.put(docReceived,new LockManager(docReceived.getUrl()));
-			this.backupDocument(backupDirectory,docReceived);
-			this.backupLock(locksDirectory,locks.get(docReceived));
+			this.backupDocument(backupDirectory,docReceived,false);
+			this.backupDocument(backupDirectory,docReceived,true);
+			this.backupLock(locksDirectory,locks.get(docReceived),false);
+			this.backupLock(locksDirectory,locks.get(docReceived),true);
 			nio.push(docReceived,TYPE_MSG.PUSH_NEW_FILE);
 		}
 		else
@@ -487,12 +512,13 @@ public class Server implements I_ServerHandler,Runnable{
 			{
 				if(doc.getVersionNumber() <= docReceived.getVersionNumber())
 				{
+					this.backupDocument(backupDirectory,doc,true);
 					logger.info("Received : "+ docReceived.getOwner() +"-"+docReceived.getUrl()+"-"+docReceived.getVersionNumber() );
 					doc.setFile(docReceived.getFile());
 					doc.setVersionNumber(docReceived.getVersionNumber());
 					documents.put(doc.getUrl(),doc);
 					nio.send(socketChannel,doc.getUrl().getBytes(),TYPE_MSG.ACK_UPLOAD);
-					this.backupDocument(new File("backup"),doc);
+					this.backupDocument(backupDirectory,doc,false);
 				}
 				else
 				{
@@ -596,11 +622,18 @@ public class Server implements I_ServerHandler,Runnable{
 		return null;
 	}
 
-	private void backupDocument(File dir,I_Document doc)
+	private void backupDocument(File dir,I_Document doc, boolean backup)
 	{
 		FileOutputStream fichier;
 		try {
-			fichier = new FileOutputStream(dir.getName()+"/"+doc.getUrl());
+			if(backup)
+			{
+				fichier = new FileOutputStream(dir.getName()+"/"+doc.getUrl()+".bak");
+			}
+			else
+			{
+				fichier = new FileOutputStream(dir.getName()+"/"+doc.getUrl());
+			}
 			ObjectOutputStream oos = new ObjectOutputStream(fichier);
 			oos.writeObject(doc);
 			oos.close();
@@ -648,10 +681,18 @@ public class Server implements I_ServerHandler,Runnable{
 		return null;
 	}
 
-	private void backupLock(File locksDirectory, LockManager lockManager) {
+	private void backupLock(File locksDirectory, LockManager lockManager, boolean backup) {
 		FileOutputStream fichier;
 		try {
-			fichier = new FileOutputStream(locksDirectory.getName()+"/"+lockManager.getUrlD());
+			if(backup)
+			{
+				fichier = new FileOutputStream(locksDirectory.getName()+"/"+lockManager.getUrlD()+".bak");
+			}
+			else
+			{
+				fichier = new FileOutputStream(locksDirectory.getName()+"/"+lockManager.getUrlD());
+			}
+
 			ObjectOutputStream oos = new ObjectOutputStream(fichier);
 			oos.writeObject(lockManager);
 			oos.close();
@@ -764,6 +805,7 @@ public class Server implements I_ServerHandler,Runnable{
 			LockManager lock = locks.get(doc);
 			if(lock != null)
 			{
+				this.backupLock(locksDirectory,lock,true);
 				int nextClient = lock.nextLock();
 				if(nextClient !=-1)
 				{
@@ -799,7 +841,7 @@ public class Server implements I_ServerHandler,Runnable{
 				{
 					lock.setLock(-1);
 				}
-				this.backupLock(locksDirectory,lock);
+				this.backupLock(locksDirectory,lock,false);
 			}
 
 
