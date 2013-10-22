@@ -10,8 +10,11 @@ public class InterfaceClient implements I_APICache {
 	private Cache cache;
 	private static int id ;
 	private static Scanner cmd; 
+	private boolean started;
+	
 	public InterfaceClient(String[] args){
 		cache = new Cache(args,this);
+		started = false;
 		setId(Integer.parseInt(args[0])) ;
 	}
 
@@ -29,6 +32,7 @@ public class InterfaceClient implements I_APICache {
 	}
 
 	private void mainLoop() {
+		started = true;
 		try {
 			while(true)
 			{
@@ -46,6 +50,7 @@ public class InterfaceClient implements I_APICache {
 					message = cmd.nextLine();
 					I_Document doc = new Document(message, id);
 					doc.setFile(new String("DocumentContent"+ message).getBytes());
+					System.out.println(id);
 					cache.addFile(doc);
 					break;
 				case "lockfile" :
@@ -157,6 +162,10 @@ public class InterfaceClient implements I_APICache {
 	@Override
 	public void handlerServerAvailable() {
 		System.out.println("Server is available");
+		if (!started){
+			cache.init();
+			mainLoop();
+			}
 	}
 	
 	@Override
