@@ -331,7 +331,28 @@ public class ClientTest implements I_APICache {
 			filesAvailable.removeFirst();
 			filesAvailable.addLast(currentFile);
 			cache.lockFile(currentFile);
+		}else
+		{
+			if(state == State.DOWNLOAD)
+			{
+				cache.downloadFile();
+			}
+			if(state == State.LOCK)
+			{
+				cache.lockFile(currentFile);
+			}
+			if(state == State.UPLOAD)
+			{
+				System.out.println("Blocked UPLOAD");
+				System.exit(-1);
+			}
+			if(state == State.UNLOCK)
+			{
+				
+			}
 		}
+		
+		
 	}
 
 	@Override
