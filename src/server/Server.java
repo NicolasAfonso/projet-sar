@@ -171,12 +171,21 @@ public class Server implements I_ServerHandler,Runnable{
 					lockRestore.getWaitLock().clear();
 					logger.warn("Restore lock on "+lockRestore.getUrlD()+"from backup");
 					locks.put(documents.get(lockRestore.getUrlD()),lockRestore);
+					if(lockRestore.getLock() != -1)
+					{
+						docsLockClient.put(lockRestore.getLock(),documents.get(lockRestore.getUrlD()));
+					}
 					this.backupLock(locksDirectory,locks.get(documents.get(nameFic)),false);
+					
 				}else
 				{
 					lockRestore.getWaitLock().clear();
 					logger.debug("Restore lock on "+lockRestore.getUrlD());
 					locks.put(documents.get(lockRestore.getUrlD()),lockRestore);
+					if(lockRestore.getLock() != -1)
+					{
+						docsLockClient.put(lockRestore.getLock(),documents.get(lockRestore.getUrlD()));
+					}
 	
 				}
 			}
@@ -319,46 +328,54 @@ public class Server implements I_ServerHandler,Runnable{
 		tmp.get(urlb, 0, urlSize);
 		String url = new String(urlb);
 		I_Document doc = documents.get(url);
-		if(doc != null)
+		if(docsLockClient.containsKey(c.getId()))
 		{
-			LockManager lock = locks.get(doc);
-			this.backupLock(locksDirectory,lock,true);
-			if(lock.getLock()==-1)
-			{
-				this.backupLock(locksDirectory,lock,true);
-				lock.setLock(c.getId());
-				docsLockClient.put(c.getId(),doc);
-				this.backupLock(locksDirectory, lock,false);
-				nio.send(this.getClientSocketChannel(c.getId()),doc.getUrl().getBytes(),TYPE_MSG.ACK_LOCK);
-				logger.info("Give Lock on "+ doc.getUrl()+" to " +c.getId());	
-			}
-			else 
-			{
-				if(lock.getLock()==c.getId()){
-					docsLockClient.put(c.getId(),doc);
-					logger.debug("Already lock for this client");
-					nio.send(this.getClientSocketChannel(c.getId()),doc.getUrl().getBytes(),TYPE_MSG.ACK_LOCK);
-				}
-				else{
-					if(lock.getWaitLock().contains(c.getId()))
-					{
-						logger.debug("Already existing waitLock for this client");
-						checkLockClient(lock,doc);
-					}
-					else
-					{
-						lock.addWaitLock(c.getId());
-						this.backupLock(locksDirectory, lock,false);
-						logger.info("Wait Lock on "+ doc.getUrl() + " by Client "+c.getId());
-						checkLockClient(lock,doc);
-					}
-				}
-			}
+			nio.send(socketChannel,ByteBuffer.allocate(4).putInt(6).array(),TYPE_MSG.ERROR);
 		}
 		else
 		{
-			logger.error("Erreur Lock : File not found");
+			if(doc != null)
+			{
+				LockManager lock = locks.get(doc);
+				this.backupLock(locksDirectory,lock,true);
+				if(lock.getLock()==-1)
+				{
+					this.backupLock(locksDirectory,lock,true);
+					lock.setLock(c.getId());
+					docsLockClient.put(c.getId(),doc);
+					this.backupLock(locksDirectory, lock,false);
+					nio.send(this.getClientSocketChannel(c.getId()),doc.getUrl().getBytes(),TYPE_MSG.ACK_LOCK);
+					logger.info("Give Lock on "+ doc.getUrl()+" to " +c.getId());	
+				}
+				else 
+				{
+					if(lock.getLock()==c.getId()){
+						docsLockClient.put(c.getId(),doc);
+						logger.debug("Already lock for this client");
+						nio.send(this.getClientSocketChannel(c.getId()),doc.getUrl().getBytes(),TYPE_MSG.ACK_LOCK);
+					}
+					else{
+						if(lock.getWaitLock().contains(c.getId()))
+						{
+							logger.debug("Already existing waitLock for this client");
+							checkLockClient(lock,doc);
+						}
+						else
+						{
+							lock.addWaitLock(c.getId());
+							this.backupLock(locksDirectory, lock,false);
+							logger.info("Wait Lock on "+ doc.getUrl() + " by Client "+c.getId());
+							checkLockClient(lock,doc);
+						}
+					}
+				}
+			}
+			else
+			{
+				logger.error("Erreur Lock : File not found");
+			}
 		}
+		
 
 	}
 
