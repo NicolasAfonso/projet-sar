@@ -421,8 +421,10 @@ public class NioEngine implements I_NioEngine{
 	public void reconnect(InetAddress hostAddress,int port) throws InterruptedException {
 		if(socketChannel_Client!=null)	
 			try {
+				clients.remove(socketChannel_Client);
 				socketChannel_Client.close();
 				selector.close();
+				
 			} catch (IOException e) {
 				logger.error("Error to close SocketChannel client and selector");
 			}
