@@ -514,7 +514,7 @@ public class Server implements I_ServerHandler,Runnable{
 		{
 			logger.info("Create new document "+docReceived.getUrl()+" and push clients ");
 			documents.put(docReceived.getUrl(),docReceived);
-			docsLockClient.put(nio.getClient(socketChannel).getId(), docReceived);
+		//	docsLockClient.put(nio.getClient(socketChannel).getId(), docReceived);
 			locks.put(docReceived,new LockManager(docReceived.getUrl()));
 			this.backupDocument(backupDirectory,docReceived,false);
 			this.backupDocument(backupDirectory,docReceived,true);
@@ -684,15 +684,15 @@ public class Server implements I_ServerHandler,Runnable{
 				return doc;
 			}
 		} catch (FileNotFoundException e) {
-			logger.error("Error restore",e);
+			logger.error("Error restore",e.getCause());
 		} catch (EOFException e){
-			logger.error("Error restore",e);
+			logger.error("Error restore",e.getCause());
 		}
 		catch (IOException e) {
-			logger.error("Error restore",e);
+			logger.error("Error restore",e.getCause());
 
 		} catch (ClassNotFoundException e) {
-			logger.error("Error restore",e);
+			logger.error("Error restore",e.getCause());
 		}
 		return null;
 	}
@@ -774,6 +774,11 @@ public class Server implements I_ServerHandler,Runnable{
 		if(socketChannelClient == null)
 		{
 			int nextClient = lock.nextLock();
+			while(docsLockClient.get(nextClient) != null)
+			{
+				lock.addWaitLock(nextClient);
+				nextClient = lock.nextLock();
+			}
 			if(nextClient !=-1)
 			{
 				lock.setLock(nextClient);
@@ -822,6 +827,11 @@ public class Server implements I_ServerHandler,Runnable{
 			{
 				this.backupLock(locksDirectory,lock,true);
 				int nextClient = lock.nextLock();
+				while(docsLockClient.get(nextClient) != null)
+				{
+					lock.addWaitLock(nextClient);
+					nextClient = lock.nextLock();
+				}
 				if(nextClient !=-1)
 				{
 					lock.setLock(nextClient);
