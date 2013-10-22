@@ -328,12 +328,6 @@ public class Server implements I_ServerHandler,Runnable{
 		tmp.get(urlb, 0, urlSize);
 		String url = new String(urlb);
 		I_Document doc = documents.get(url);
-		if(docsLockClient.containsKey(c.getId()))
-		{
-			nio.send(socketChannel,ByteBuffer.allocate(4).putInt(6).array(),TYPE_MSG.ERROR);
-		}
-		else
-		{
 			if(doc != null)
 			{
 				LockManager lock = locks.get(doc);
@@ -375,9 +369,7 @@ public class Server implements I_ServerHandler,Runnable{
 				logger.error("Erreur Lock : File not found");
 			}
 		}
-		
 
-	}
 
 
 	

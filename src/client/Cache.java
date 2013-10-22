@@ -368,7 +368,7 @@ public class Cache implements I_CacheHandler{
 		ByteBuffer docTab = ByteBuffer.allocate(lockedFile.length() + 4);
 		docTab.putInt(lockedFile.length());
 		docTab.put(lockedFile.getBytes());
-		lockedFile = null;
+		tmpD = null;
 		nio.send(docTab.array(),TYPE_MSG.UNLOCK);
 	}else
 		handlerAPI.handlerServerNotAvailable();
@@ -386,7 +386,6 @@ public class Cache implements I_CacheHandler{
 				tmpD.setVersionNumber(tmpD.getVersionNumber()+1);
 				byte[] docU = I_DocumentToByte(tmpD);
 				nio.send(docU, TYPE_MSG.UPLOAD);
-				tmpD = null;
 			}
 			else
 				handlerAPI.handlerError(7); // the file does not exists

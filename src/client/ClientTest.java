@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Scanner;
 import java.util.logging.Logger;
 
+import document.I_Document;
 import document.TestDocument;
 
 public class ClientTest implements I_APICache {
@@ -25,25 +26,43 @@ public class ClientTest implements I_APICache {
 	private int round = 0 ;
 	private String firstDoc;
 	private LinkedList<String> filesAvailable ; 
+	private List<String> alreadyVisted;
+	private List<String> alreadyVistedbyTour;
 	private enum State{LOCK,UNLOCK,DOWNLOAD,UPLOAD};
 	private State state;
-
+	
 	public ClientTest(String[] args){
 		cache = new Cache(args,this);
 		setId(Integer.parseInt(args[0]));
 		filesAvailable = new LinkedList<String>();
+		alreadyVisted = new ArrayList<String>();
+		alreadyVistedbyTour = new ArrayList<String>();
 	}
 
 	@Override
 	public void handlerLockFile(String url) {
+		
 		System.out.println("File "+ url +" has been locked");
-		cache.downloadFile(currentFile);
-		state = State.DOWNLOAD;
+		if(state == State.UPLOAD)
+		{
+			cache.updateFile();
+		}
+		if(state == State.DOWNLOAD)
+		{
+			cache.downloadFile();
+		}else
+		{
+			cache.downloadFile();
+			state = State.DOWNLOAD;
+		}
+		
+		
 
 	}
 
 	@Override
 	public void handlerReceivedFile(String url) {
+		state = State.DOWNLOAD;
 		System.out.println("File "+ url +" has been received");
 		if(cache.getCurrentFile() instanceof TestDocument  )
 		{
@@ -65,23 +84,25 @@ public class ClientTest implements I_APICache {
 				}
 				if(data.containsKey(id))
 				{
-					if(data.get(id) != (round-1) && data.get(id) != (round-2) && data.get(id) !=round)
+					if(data.get(id) != (round-1) && alreadyVisted.contains(url))
 					{
 						System.err.println("ERROR CONCURENCY" + round +":"+(data.get(id)));
+						System.exit(-1);
 						
+					}
+					else
+					{
+						alreadyVisted.add(url);
 					}
 				}
 
 				data.put(id,round);
-				if(firstDoc.equals(url))
-				{
-					round ++ ;
-				}
 				ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
 				ObjectOutputStream out = new ObjectOutputStream(byteOut);
 				out.writeObject(data);
 				cache.getCurrentFile().setFile(byteOut.toByteArray());
 				cache.updateFile();
+				alreadyVistedbyTour.add(url);
 				state = State.UPLOAD;
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -95,19 +116,28 @@ public class ClientTest implements I_APICache {
 
 	@Override
 	public void handlerUpdateFile(String url) {
-		System.out.println("File "+ url +" has been updated");
-		cache.unlockFile(currentFile);
 		state = State.UNLOCK;
+		System.out.println("File "+ url +" has been updated");
+		
+		if(firstDoc.equals(url))
+		{
+			round ++ ;
+			alreadyVistedbyTour.clear();
+		}
+		cache.unlockFile();
+
 
 	}
 	@Override
 	public void handlerUnlockFile(String url) {
-		System.out.println("File "+ url +" has been locked");
+		state = State.UNLOCK;
 		currentFile=null;
+		System.out.println("File "+ url +" has been locked");
+		alreadyVistedbyTour.add(url);
 		currentFile = filesAvailable.getFirst();
 		filesAvailable.removeFirst();
 		filesAvailable.addLast(currentFile);
-		cache.lockFile(currentFile);	
+		cache.lockFile(currentFile);
 		state = State.LOCK;
 	}
 
@@ -126,11 +156,30 @@ public class ClientTest implements I_APICache {
 			}
 		}
 		if(serverfail)
-		{
-			currentFile = filesAvailable.getLast();
-			cache.lockFile(currentFile);	
-			state = State.LOCK;
-			serverfail = false;
+		{	
+			switch(state){
+			case LOCK:
+				serverfail = false;
+				cache.lockFile(currentFile);
+				break;
+			case DOWNLOAD : 
+				serverfail = false;
+				cache.downloadFile();
+				break;
+			case UPLOAD :
+				serverfail = false;
+				cache.updateFile();
+				break;
+			case UNLOCK:
+				serverfail = false;
+				cache.unlockFile();
+				break;
+			default:
+				System.err.println("Default");
+				System.exit(-1);
+				break;
+				}
+			
 		}
 		if(first)
 		{
@@ -168,6 +217,7 @@ public class ClientTest implements I_APICache {
 	@Override
 	public void handlerServerAvailable() {
 		System.out.println("Server is available");
+
 	}
 	
 	@Override
@@ -185,7 +235,8 @@ public class ClientTest implements I_APICache {
 
 	}
 	/**
-	 * @return the id
+	 * @return the idServer is available
+
 	 */
 	public static int getId() {
 		return id;
@@ -206,10 +257,26 @@ public class ClientTest implements I_APICache {
 				System.exit(0);
 				break;
 			case 1 :
-				System.out.println("You have to lock the file before !");
+				if(state == State.UNLOCK)
+				{
+					currentFile = filesAvailable.getFirst();
+					filesAvailable.removeFirst();
+					filesAvailable.addLast(currentFile);
+					state = State.LOCK;
+					cache.lockFile(currentFile);
+				}
+				if(state == State.UPLOAD)
+				{
+					cache.lockFile(currentFile);
+				}
+				if(state == State.DOWNLOAD)
+				{
+					cache.lockFile(currentFile);
+				}
 				break;
 			case 2:
 				System.out.println("You have uploaded a document whose version is older than it is on the server.");
+				cache.unlockFile();
 				break;
 			case 3:
 				System.out.println("The document you requested is not available.");
@@ -220,13 +287,39 @@ public class ClientTest implements I_APICache {
 			case 5:
 				System.out.println("A file with the same name already exist on server. Please change the file name if you think it is a different one.");
 				break;
+			case 6 : 
+				errorSix();
+				break ;
+			case 7 :
+				
+				break;
 			default :
 				System.out.println("Unknown Error");
 				break;
 			}
 		
 	}
-
+	
+	private void errorSix(){
+		switch(state){
+		case LOCK:
+			cache.lockFile(currentFile);
+			break;
+		case DOWNLOAD : 
+			cache.downloadFile();
+			break;
+		case UPLOAD :
+			cache.downloadFile();
+			break;
+		case UNLOCK:
+			cache.unlockFile();
+			break;
+		default:
+			System.err.println("Default");
+			System.exit(-1);
+			break;
+			}
+	}
 	
 	@Override
 	public void handlerPushNewFile(String url) {
@@ -239,19 +332,12 @@ public class ClientTest implements I_APICache {
 			filesAvailable.addLast(currentFile);
 			cache.lockFile(currentFile);
 		}
-		if(state == State.DOWNLOAD)
-		{
-			cache.downloadFile(currentFile);
-		}
-		if(state == State.LOCK)
-		{
-			cache.lockFile(currentFile);
-		}
-		if(state == State.UPLOAD)
-		{
-			cache.unlockFile(currentFile);
-		}
+	}
 
+	@Override
+	public void handlerOpenFile(I_Document tmpD) {
+		// TODO Auto-generated method stub
+		
 	}
 
 
