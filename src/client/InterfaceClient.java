@@ -199,6 +199,9 @@ public class InterfaceClient implements I_APICache {
 		case 5:
 			System.out.println("A file with the same name already exist on server. Please change the file name if you think it is a different one.");
 			break;
+		case 6:
+			System.out.println("You can lock only one file.");
+			break;
 		case 7:
 			System.out.println("Your cache is empty. Please lock and download a file before.");
 			break;
