@@ -50,7 +50,6 @@ public class InterfaceClient implements I_APICache {
 					message = cmd.nextLine();
 					I_Document doc = new Document(message, id);
 					doc.setFile(new String("DocumentContent"+ message).getBytes());
-					System.out.println(id);
 					cache.addFile(doc);
 					break;
 				case "lockfile" :
@@ -73,9 +72,9 @@ public class InterfaceClient implements I_APICache {
 					cache.unlockFile();
 					break;
 				case "deletefile" :
-					//System.out.println("Enter File name :");
-					//message = cmd.nextLine();
-					cache.deleteFile();
+					System.out.println("Enter File name :");
+					message = cmd.nextLine();
+					cache.deleteFile(message);
 					break;
 				case "openfile" :	// you can only open the file you've locked
 					cache.openfile();

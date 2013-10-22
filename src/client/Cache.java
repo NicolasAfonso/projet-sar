@@ -12,7 +12,9 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.apache.log4j.Logger;
+
 import document.I_Document;
 import engine.I_NioEngine;
 import engine.NioEngine;
@@ -23,7 +25,7 @@ public class Cache implements I_CacheHandler{
 	private int id ; 			// cache id
 	private List<String> urls ;	// an url is a unique document identifier. urls contains the list of the documents available on the cache.
 	private I_NioEngine nio ;	// the nioEngine
-	private ByteBuffer tmp ;
+	private ByteBuffer tmp ;	//tmp byte buffer var
 	private Thread nioT ;
 	private static final Logger logger = Logger.getLogger(Cache.class);
 	private I_APICache handlerAPI;
@@ -307,16 +309,17 @@ public class Cache implements I_CacheHandler{
 
 	/**
 	 * Method used when client wants to delete a file on the server
+	 * @param message 
 	 * @param urlD, the url of the document we want to delete
 	 */
-	public void deleteFile()
+	public void deleteFile(String message)
 	{
 		if (!serverfail){
-			if(urls.contains(lockedFile))
+			if(urls.contains(message))
 			{
-				ByteBuffer docTab = ByteBuffer.allocate(lockedFile.length() + 4);
-				docTab.putInt(lockedFile.length());
-				docTab.put(lockedFile.getBytes());
+				ByteBuffer docTab = ByteBuffer.allocate(message.length() + 4);
+				docTab.putInt(message.length());
+				docTab.put(message.getBytes());
 				nio.send(docTab.array(),TYPE_MSG.DELETE);
 			}
 			else
