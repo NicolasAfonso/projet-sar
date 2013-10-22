@@ -32,6 +32,7 @@ public class Cache implements I_CacheHandler{
 	private int serverPort;
 	private InetAddress addrServer;
 	private boolean serverfail;
+	private String lockedFile;
 
 	/**
 	 * Cache constructor
@@ -290,14 +291,14 @@ public class Cache implements I_CacheHandler{
 	public void addFile(I_Document doc)
 	{
 		if (!serverfail){
-		if(!urls.contains(doc.getUrl()))
-		{
-			byte[] docUpload = I_DocumentToByte(doc);
-			nio.send(docUpload,TYPE_MSG.UPLOAD);
+			if(!urls.contains(doc.getUrl()))
+			{
+				byte[] docUpload = I_DocumentToByte(doc);
+				nio.send(docUpload,TYPE_MSG.UPLOAD);
+			}
+			else
+				handlerAPI.handlerError(5); // a file with the same name already exists in the system
 		}
-		else
-			handlerAPI.handlerError(5); // a file with the same name already exists in the system
-	}
 		else
 			handlerAPI.handlerServerNotAvailable();
 	}
@@ -308,21 +309,21 @@ public class Cache implements I_CacheHandler{
 	 * Method used when client wants to delete a file on the server
 	 * @param urlD, the url of the document we want to delete
 	 */
-	public void deleteFile(String urlD)
+	public void deleteFile()
 	{
 		if (!serverfail){
-			if(urls.contains(urlD))
+			if(urls.contains(lockedFile))
 			{
-				ByteBuffer docTab = ByteBuffer.allocate(urlD.length() + 4);
-				docTab.putInt(urlD.length());
-				docTab.put(urlD.getBytes());
+				ByteBuffer docTab = ByteBuffer.allocate(lockedFile.length() + 4);
+				docTab.putInt(lockedFile.length());
+				docTab.put(lockedFile.getBytes());
 				nio.send(docTab.array(),TYPE_MSG.DELETE);
 			}
 			else
 				handlerAPI.handlerError(3); // the file does not exists
-	}else
-		handlerAPI.handlerServerNotAvailable();
-		}
+		}else
+			handlerAPI.handlerServerNotAvailable();
+	}
 
 	/**
 	 * Method used for printing the local list file
@@ -344,6 +345,7 @@ public class Cache implements I_CacheHandler{
 
 			if(urls.contains(url))
 			{
+				lockedFile = url;
 				ByteBuffer docTab = ByteBuffer.allocate(url.length() + 4);
 				docTab.putInt(url.length());
 				docTab.put(url.getBytes());
@@ -361,11 +363,12 @@ public class Cache implements I_CacheHandler{
 	 * Method used for requesting a file unlock
 	 * @param url, the url of the file we want to unlock
 	 */
-	public void unlockFile(String url)
+	public void unlockFile()
 	{if (!serverfail) {
-		ByteBuffer docTab = ByteBuffer.allocate(url.length() + 4);
-		docTab.putInt(url.length());
-		docTab.put(url.getBytes());
+		ByteBuffer docTab = ByteBuffer.allocate(lockedFile.length() + 4);
+		docTab.putInt(lockedFile.length());
+		docTab.put(lockedFile.getBytes());
+		lockedFile = null;
 		nio.send(docTab.array(),TYPE_MSG.UNLOCK);
 	}else
 		handlerAPI.handlerServerNotAvailable();
@@ -405,11 +408,12 @@ public class Cache implements I_CacheHandler{
 	 * 
 	 * @param message
 	 */
-	public void downloadFile(String message) {
+	public void downloadFile() {
 		if (!serverfail) {
-			tmp = ByteBuffer.allocate(message.length()+4);
-			tmp.putInt(message.length());
-			tmp.put(message.getBytes());
+			//String message = lockedFile;
+			tmp = ByteBuffer.allocate(lockedFile.length()+4);
+			tmp.putInt(lockedFile.length());
+			tmp.put(lockedFile.getBytes());
 			nio.send(tmp.array(),TYPE_MSG.DOWNLOAD);
 		}
 		else 
