@@ -34,7 +34,7 @@ public class InterfaceClient implements I_APICache {
 			{
 				cmd = new Scanner(System.in);
 				String message ;
-				System.out.println("Enter your command :");
+				System.out.println("\nEnter your command :");
 				message = cmd.nextLine();
 				switch(message)
 				{
@@ -45,7 +45,7 @@ public class InterfaceClient implements I_APICache {
 					System.out.println("Enter File name :");
 					message = cmd.nextLine();
 					I_Document doc = new Document(message, id);
-					doc.setFile(new String("DocumentContent").getBytes());
+					doc.setFile(new String("DocumentContent"+ message).getBytes());
 					cache.addFile(doc);
 					break;
 				case "lockfile" :
@@ -70,6 +70,9 @@ public class InterfaceClient implements I_APICache {
 					System.out.println("Enter File name :");
 					message = cmd.nextLine();
 					cache.deleteFile(message);
+					break;
+				case "openfile" :	// you can only open the file you've locked
+					cache.openfile();
 					break;
 				case "?" :
 				case "help" :
@@ -157,7 +160,7 @@ public class InterfaceClient implements I_APICache {
 	
 	@Override
 	public void handlerServerNotAvailable() {
-		System.out.println("Server is not available");
+		System.out.println("Server is not available. Please wait until its reboot.");
 	}
 	
 	@Override
@@ -195,22 +198,27 @@ public class InterfaceClient implements I_APICache {
 		case 5:
 			System.out.println("A file with the same name already exist on server. Please change the file name if you think it is a different one.");
 			break;
+		case 7:
+			System.out.println("Your cache is empty. Please lock and download a file before.");
+			break;
 		default :
 			System.out.println("Unknown Error");
 			break;
 		}
 		
-		
-		
-		/*if (errorType.equals("ID"))
-		
-		}*/
 			
 	}
 
 	@Override
 	public void handlerPushNewFile(String url) {
 		System.out.println("File "+ url +" has been pushed");
+		
+	}
+
+	@Override
+	public void handlerOpenFile(I_Document doc) {
+		System.out.println("Content of file "+doc.getUrl());
+		System.out.println(new String(doc.getFile()));
 		
 	}
 

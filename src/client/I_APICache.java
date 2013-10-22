@@ -2,6 +2,8 @@ package client;
 
 import java.util.List;
 
+import document.I_Document;
+
 
 public interface I_APICache {
 	
@@ -62,4 +64,6 @@ public interface I_APICache {
 	 * @param url
 	 */
 	public void handlerPushNewFile(String url);
+
+	public void handlerOpenFile(I_Document tmpD);
 }

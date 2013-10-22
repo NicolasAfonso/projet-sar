@@ -31,6 +31,7 @@ public class Cache implements I_CacheHandler{
 	private String serverName ;
 	private int serverPort;
 	private InetAddress addrServer;
+	private boolean serverfail;
 
 	/**
 	 * Cache constructor
@@ -46,6 +47,7 @@ public class Cache implements I_CacheHandler{
 		handlerAPI = hc ;
 		serverName = "localhost";
 		serverPort = Integer.parseInt(arg[1]);
+		serverfail = false;
 		try {
 			addrServer = InetAddress.getByName(serverName);
 		} catch (UnknownHostException e) {
@@ -162,7 +164,7 @@ public class Cache implements I_CacheHandler{
 		handlerAPI.handlerUnlockFile(url);
 	}
 
-	
+
 	/**
 	 * Handler called when an upload ack message is received.
 	 * @param data, a byte array containing the url of the uploaded document
@@ -172,7 +174,7 @@ public class Cache implements I_CacheHandler{
 		logger.info("File updated : "+url);
 		handlerAPI.handlerUpdateFile(url);
 	}
-	
+
 
 	/**
 	 * Handler called when a list file ack message is received.
@@ -206,7 +208,7 @@ public class Cache implements I_CacheHandler{
 		handlerAPI.handlerListFile(urls);
 	}
 
-	
+
 	/**
 	 * Handler called when a helloClient ack message is received.
 	 * @param data, empty array
@@ -215,7 +217,7 @@ public class Cache implements I_CacheHandler{
 		nio.send("".getBytes(),TYPE_MSG.LIST_FILE);
 	}
 
-	
+
 	/**
 	 * Callback used when the server boot. Client is notified that server is available.
 	 * @param data
@@ -224,7 +226,7 @@ public class Cache implements I_CacheHandler{
 		logger.info("Received HELLO_SERVER");
 	}
 
-	
+
 	/**
 	 * Callback used when the server send a new document information
 	 * @param data, a byte array containing the version and url of the new file
@@ -240,13 +242,13 @@ public class Cache implements I_CacheHandler{
 		tmp.position(8);
 		tmp.get(urlb, 0, urlSize);
 		String url = new String(urlb);
-		
+
 		logger.info("Received PUSH_NEW_FILE :"+ url +"-Version  "+versionClient);
 		urls.add(url); // need to update the local url list
 		handlerAPI.handlerPushNewFile(url);
 	}
 
-	
+
 	/**
 	 * Callback used when the server send a Delete Notification
 	 * @param data, a byte array containing the version and url of the deleted file
@@ -256,19 +258,19 @@ public class Cache implements I_CacheHandler{
 		tmp.put(data);
 		tmp.rewind();
 		int versionClient = tmp.getInt(0);
-		
+
 		int urlSize = tmp.getInt(4);
 		byte[] urlb = new byte[urlSize];
 		tmp.position(8);
 		tmp.get(urlb, 0, urlSize);
 		String url = new String(urlb);
-		
+
 		logger.info("Received DELETE_FILE :"+ url +"-Version  "+versionClient);
 		urls.remove(url); // need to update the local url list
 		handlerAPI.handlerDeleteFile(url);
 	}
 
-	
+
 	/**
 	 * Callback used when the server respond to a Download Notification
 	 * @param data, a byte array containing the previous requested document
@@ -287,6 +289,7 @@ public class Cache implements I_CacheHandler{
 	 */
 	public void addFile(I_Document doc)
 	{
+		if (!serverfail){
 		if(!urls.contains(doc.getUrl()))
 		{
 			byte[] docUpload = I_DocumentToByte(doc);
@@ -295,8 +298,11 @@ public class Cache implements I_CacheHandler{
 		else
 			handlerAPI.handlerError(5); // a file with the same name already exists in the system
 	}
-	
-	
+		else
+			handlerAPI.handlerServerNotAvailable();
+	}
+
+
 
 	/**
 	 * Method used when client wants to delete a file on the server
@@ -304,70 +310,95 @@ public class Cache implements I_CacheHandler{
 	 */
 	public void deleteFile(String urlD)
 	{
-		if(urls.contains(urlD))
-		{
-			ByteBuffer docTab = ByteBuffer.allocate(urlD.length() + 4);
-			docTab.putInt(urlD.length());
-			docTab.put(urlD.getBytes());
-			nio.send(docTab.array(),TYPE_MSG.DELETE);
+		if (!serverfail){
+			if(urls.contains(urlD))
+			{
+				ByteBuffer docTab = ByteBuffer.allocate(urlD.length() + 4);
+				docTab.putInt(urlD.length());
+				docTab.put(urlD.getBytes());
+				nio.send(docTab.array(),TYPE_MSG.DELETE);
+			}
+			else
+				handlerAPI.handlerError(3); // the file does not exists
+	}else
+		handlerAPI.handlerServerNotAvailable();
 		}
-		else
-			handlerAPI.handlerError(3); // the file does not exists
-	}
 
 	/**
 	 * Method used for printing the local list file
 	 */
 	public void listFile()
-	{					
+	{		if (!serverfail) 			
 		handlerAPI.handlerListFile(urls);
+	else
+		handlerAPI.handlerServerNotAvailable();
 	}
 
-	
+
 	/**
 	 * Method used for requesting a file lock
 	 * @param url, the url of the file we want to lock
 	 */
 	public void lockFile(String url){
-		if(urls.contains(url))
-		{
-			ByteBuffer docTab = ByteBuffer.allocate(url.length() + 4);
-			docTab.putInt(url.length());
-			docTab.put(url.getBytes());
-			nio.send(docTab.array(),TYPE_MSG.LOCK);
+		if (!serverfail) {
+
+			if(urls.contains(url))
+			{
+				ByteBuffer docTab = ByteBuffer.allocate(url.length() + 4);
+				docTab.putInt(url.length());
+				docTab.put(url.getBytes());
+				nio.send(docTab.array(),TYPE_MSG.LOCK);
+			}
+			else
+				handlerAPI.handlerError(3); // the file does not exists
 		}
 		else
-			handlerAPI.handlerError(3); // the file does not exists
+			handlerAPI.handlerServerNotAvailable();
 	}
-	
-	
+
+
 	/**
 	 * Method used for requesting a file unlock
 	 * @param url, the url of the file we want to unlock
 	 */
 	public void unlockFile(String url)
-	{
+	{if (!serverfail) {
 		ByteBuffer docTab = ByteBuffer.allocate(url.length() + 4);
 		docTab.putInt(url.length());
 		docTab.put(url.getBytes());
 		nio.send(docTab.array(),TYPE_MSG.UNLOCK);
-
+	}else
+		handlerAPI.handlerServerNotAvailable();
 
 	}
 
-	
+
 	/**
 	 * Method used for updating a file
 	 */
 	public void updateFile(){
-		if(tmpD !=null)
-		{
-			tmpD.setVersionNumber(tmpD.getVersionNumber()+1);
-			byte[] docU = I_DocumentToByte(tmpD);
-			nio.send(docU, TYPE_MSG.UPLOAD);
-			tmpD = null;
+		if (!serverfail) {
+			if(tmpD !=null)
+			{
+				tmpD.setVersionNumber(tmpD.getVersionNumber()+1);
+				byte[] docU = I_DocumentToByte(tmpD);
+				nio.send(docU, TYPE_MSG.UPLOAD);
+				tmpD = null;
+			}
+			else
+				handlerAPI.handlerError(7); // the file does not exists
 		}
+		else
+			handlerAPI.handlerServerNotAvailable();
+	}
 
+
+	public void openfile() {
+		if(tmpD !=null){	// a doc is on the cache
+			handlerAPI.handlerOpenFile(tmpD);
+		}
+		else
+			handlerAPI.handlerError(7); // the file does not exists
 	}
 
 	/**
@@ -375,10 +406,14 @@ public class Cache implements I_CacheHandler{
 	 * @param message
 	 */
 	public void downloadFile(String message) {
-		tmp = ByteBuffer.allocate(message.length()+4);
-		tmp.putInt(message.length());
-		tmp.put(message.getBytes());
-		nio.send(tmp.array(),TYPE_MSG.DOWNLOAD);
+		if (!serverfail) {
+			tmp = ByteBuffer.allocate(message.length()+4);
+			tmp.putInt(message.length());
+			tmp.put(message.getBytes());
+			nio.send(tmp.array(),TYPE_MSG.DOWNLOAD);
+		}
+		else 
+			handlerAPI.handlerServerNotAvailable();
 	}
 
 
@@ -432,7 +467,8 @@ public class Cache implements I_CacheHandler{
 
 	@Override
 	public void serverNotAvailable() {
-		logger.info("Server isn't available");
+		serverfail = true;
+		logger.info("Server is not available.");
 		handlerAPI.handlerServerNotAvailable();
 		boolean serverReboot = false;
 		while(!serverReboot)
@@ -448,6 +484,7 @@ public class Cache implements I_CacheHandler{
 			}
 		}
 		logger.info("Server available");
+		serverfail = false;
 		handlerAPI.handlerServerAvailable();
 		tmp = ByteBuffer.allocate(4);
 		tmp.putInt(id);
