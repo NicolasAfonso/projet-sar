@@ -364,7 +364,6 @@ public class Cache implements I_CacheHandler{
 
 	/**
 	 * Method used for requesting a file unlock
-	 * @param url, the url of the file we want to unlock
 	 */
 	public void unlockFile()
 	{if (!serverfail) {
@@ -396,8 +395,11 @@ public class Cache implements I_CacheHandler{
 		else
 			handlerAPI.handlerServerNotAvailable();
 	}
+	
 
-
+/**
+ * Method used for opening the current document in the cache
+ */
 	public void openfile() {
 		if(tmpD !=null){	// a doc is on the cache
 			handlerAPI.handlerOpenFile(tmpD);
@@ -407,12 +409,11 @@ public class Cache implements I_CacheHandler{
 	}
 
 	/**
+	 * Method used for requesting the locked document to be downloaded from the server
 	 * 
-	 * @param message
 	 */
 	public void downloadFile() {
 		if (!serverfail) {
-			//String message = lockedFile;
 			tmp = ByteBuffer.allocate(lockedFile.length()+4);
 			tmp.putInt(lockedFile.length());
 			tmp.put(lockedFile.getBytes());
@@ -429,7 +430,7 @@ public class Cache implements I_CacheHandler{
 
 	/**
 	 * Transform a bytes array in I_Document object
-	 * @param data
+	 * @param data, the byte array to transform into a document
 	 * @return
 	 */
 	private I_Document bytesToI_Document(byte[] data){
@@ -452,7 +453,7 @@ public class Cache implements I_CacheHandler{
 
 	/**
 	 * Transform a I_Document in bytes array
-	 * @param doc
+	 * @param doc, the document to transform
 	 * @return
 	 */
 	private byte[] I_DocumentToByte(I_Document doc){
