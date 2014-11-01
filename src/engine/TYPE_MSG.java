@@ -26,6 +26,7 @@ public enum TYPE_MSG{
 				return DELETE;
 			case 8 :
 				return PUSH_NEW_FILE;
+<<<<<<< HEAD
 			case 9 : 
 				return LIST_FILE;
 			case 10:
@@ -42,6 +43,14 @@ public enum TYPE_MSG{
 				return ACK_UPLOAD;
 			case 16 :
 				return ACK_LIST_FILE;
+=======
+			case 9:
+				return ACK;
+			case 10 : 
+				return ACK_HELLO_CLIENT;
+			case 11 :
+				return ACK_DOWNLOAD;
+>>>>>>> origin/master
 			default :
 				return ERROR;
 		}

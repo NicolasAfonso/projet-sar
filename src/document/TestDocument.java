@@ -9,7 +9,8 @@ public class TestDocument extends Document {
 	 */
 	private static final long serialVersionUID = 1L;
 	
-	public TestDocument(String url, int owner){
-		super(url,owner);
+	public TestDocument(String u, int o){
+		super(u,o);
+
 	}
 }

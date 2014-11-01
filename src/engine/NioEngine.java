@@ -406,7 +406,8 @@ public class NioEngine implements I_NioEngine{
 
 		Set<SocketChannel> keys = clients.keySet();
 		Iterator it = keys.iterator();
-		while (it.hasNext()){	
+		Z
+		while (it.hasNext()){		
 			send((SocketChannel) it.next(), docTab.array(), type);
 		}
 	}
@@ -445,6 +446,5 @@ public class NioEngine implements I_NioEngine{
 		}
 		return false;
 	}
-
 
 }

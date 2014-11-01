@@ -56,11 +56,11 @@ public interface I_NioEngine extends Runnable {
 	public Client getClient(SocketChannel socketChannel);
 	
 	public void push(I_Document doc,TYPE_MSG type);
+	
 	public List<Client> getClients();
 
 	public void reconnect(InetAddress hostAddress,int port) throws InterruptedException;
 
 	public boolean isConnected();
 
- 
 }

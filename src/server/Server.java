@@ -1,4 +1,5 @@
 package server;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
@@ -213,6 +214,7 @@ public class Server implements I_ServerHandler,Runnable{
 
 	@Override
 	public void receivedMSG(byte[] data, TYPE_MSG type, SocketChannel socketChannel) {
+
 		switch (type)
 		{
 		case ERROR :
@@ -561,6 +563,7 @@ public class Server implements I_ServerHandler,Runnable{
 	 * @param data
 	 * @param socketChannel
 	 */
+
 	private void receivedHelloClient(byte[] data, SocketChannel socketChannel) {
 		Client c = nio.getClient(socketChannel);
 		tmp = ByteBuffer.allocate(4);

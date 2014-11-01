@@ -13,6 +13,7 @@ public interface I_ServerHandler {
 	 * @param type
 	 * @param socketChannel
 	 */
+	 
 	public void receivedMSG(byte[] data, TYPE_MSG type,SocketChannel socketChannel);
 
 	public void clientDisconnected(Client client);
